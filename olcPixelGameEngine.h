@@ -899,6 +899,12 @@ namespace olc
 		bool IsFocused() const;
 		// Get the state of a specific keyboard button
 		HWButton GetKey(Key k) const;
+
+		// YOOOOO
+		void showAllKeys();
+		std::vector<uint8_t> GetAllKeys() const;
+		bool isShiftHeld();
+
 		// Get the state of a specific mouse button
 		HWButton GetMouse(uint32_t b) const;
 		// Get Mouse X coordinate in "pixel" space
@@ -1784,6 +1790,26 @@ namespace olc
 
 	HWButton PixelGameEngine::GetKey(Key k) const
 	{ return pKeyboardState[k];	}
+
+	void PixelGameEngine::showAllKeys(){
+		for (int i = 0; i < 256; i++) {
+			std::cout << "Key: " << i << ", " << int(pKeyboardState[i].bPressed) << std::endl;
+		}
+	}
+
+	std::vector<uint8_t> PixelGameEngine::GetAllKeys() const {
+		std::vector<uint8_t> result;
+		for (int i = 0; i < 256; i++) {
+			if (pKeyboardState[i].bPressed)
+				result.push_back(i);				
+		}
+
+		return result;
+	}
+
+	bool PixelGameEngine::isShiftHeld() {
+		return pKeyboardState[55].bHeld;
+	}
 
 	HWButton PixelGameEngine::GetMouse(uint32_t b) const
 	{ return pMouseState[b]; }

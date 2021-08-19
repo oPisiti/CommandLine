@@ -1,0 +1,5 @@
+0-26 : a-z
+27-52: A-Z
+53: SPACE
+55: SHIFT
+63: BACKSPACE
