@@ -902,8 +902,9 @@ namespace olc
 
 		// YOOOOO
 		void showAllKeys();
-		std::vector<uint8_t> GetAllKeys() const;
+		std::vector<uint8_t> GetAllPressedKeys() const;
 		bool isShiftHeld();
+		bool isBackspaceHeld();
 
 		// Get the state of a specific mouse button
 		HWButton GetMouse(uint32_t b) const;
@@ -1797,7 +1798,7 @@ namespace olc
 		}
 	}
 
-	std::vector<uint8_t> PixelGameEngine::GetAllKeys() const {
+	std::vector<uint8_t> PixelGameEngine::GetAllPressedKeys() const {
 		std::vector<uint8_t> result;
 		for (int i = 0; i < 256; i++) {
 			if (pKeyboardState[i].bPressed)
@@ -1809,6 +1810,10 @@ namespace olc
 
 	bool PixelGameEngine::isShiftHeld() {
 		return pKeyboardState[55].bHeld;
+	}
+
+	bool PixelGameEngine::isBackspaceHeld() {
+		return  pKeyboardState[63].bHeld;
 	}
 
 	HWButton PixelGameEngine::GetMouse(uint32_t b) const
