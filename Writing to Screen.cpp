@@ -269,22 +269,25 @@ private:
 		{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} 	// 0xFF
 		};
 
-	int initCharPosX = 10, initCharPosY = 10;
-	unsigned int charWidth = 8, charHeight = 8; 
+	int initCharPosX = 10, initCharPosY = 10;			// Offset to begin drawing the first character
+	unsigned int charWidth = 8, charHeight = 8;			// The grid in which to draw the pixels
 	unsigned int charac = 0, charScale = 1;
-	unsigned int minScale = 1, maxScale = 10;
+	unsigned int minScale = 1, maxScale = 10;			// For zooming
 
 	// Keys
 	std::vector<uint8_t> pressedKey;
 	bool shiftIsHeld = false, backspaceIsHeld = false;
-	std::string text = "C:>", addChar;
+	std::string text = "C:>", addChar;					// Constant initial text on screen
+	const int initTextSize = text.size();
 	bool newChar = false;
 
 	// Time and blinking stuff
-	float timeCount;				// Loops from 0 to maxTimeBlink
-	float maxTimeBlink = 0.75;		// Intervals in which the blinking light turns on and off
-	uint8_t blinkChar = 3;
+	float timeCount;									// Loops from 0 to maxTimeBlink
+	float maxTimeBlink = 0.75;							// Intervals in which the blinking light turns on and off
+	uint8_t blinkChar = 3;								// Which char (based on ascii) to 
 	bool drawBlinker = true;
+	std::vector<uint32_t> blinkerPos = {0, 0};			// Position to draw the blinker
+	//int maxSingleLineChars;								// Max number of characters able to be displayed given current zoom
 
 public:
 
@@ -317,15 +320,35 @@ public:
 		}
 	}
 
-	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, unsigned int scale = 1,
+	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, unsigned int scale = 1,
 		olc::Pixel color = olc::RED, unsigned int charWidth = 8, unsigned int charHeight = 8) {
-		
+
+		int32_t y = initialY;
+		int maxSingleLineChars = (screenWidth - initialX) / (charWidth * scale);
+
+		int mod;
 		for (int elemNum = 0; elemNum < str.size(); elemNum++) {
-			/*int charPos = 0b00011111 & str[elemNum];
-			std::cout << "INT: " << int(str[elemNum]) << ", & 0b00011111: " << charPos << std::endl;*/
-			int charPos = str[elemNum];
-			drawCharacter(initialX + charWidth * elemNum * scale, initialY, charPos, data, scale, color, charWidth, charHeight);		
+			// If this character is a SPACE, go to next
+			/*if (str[elemNum] == 32 && elemNum < (str.size() - 1)) {
+				elemNum++;
+				y += charHeight * scale;
+			}*/
+
+			// If screen space ends, jump to next line
+			mod = elemNum % maxSingleLineChars;
+			if (!mod && elemNum) {									
+				y += charHeight * scale;
+			}
+
+			drawCharacter(initialX + charWidth * mod * scale, y, str[elemNum], data, scale, color, charWidth, charHeight);
 		}
+
+		// Adjusting the blinker position
+		mod = str.size() % maxSingleLineChars;
+		if (!mod) {
+			y += charHeight * scale;
+		}
+		blinkerPos = { initialX + uint32_t(charWidth * mod * scale), uint32_t(y)};
 	}
 
 	// Called once at the start, so create things here
@@ -370,9 +393,9 @@ public:
 
 				else if (key >= 27 && key <= 36)			addChar = key + 21;			// Numbers
 				else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
-				else if (key == 53)			addChar = key - 21;							// SPACE
+				else if (key == 53)							addChar = key - 21;			// SPACE
 				else if (key == 63) {													// BACKSPACE
-					if (text.size() > 3)	text.pop_back();
+					if (text.size() > initTextSize)	text.pop_back();
 					newChar = false;
 				}
 				else if (key == 84)			addChar = key - 38;							// .
@@ -386,14 +409,10 @@ public:
 
 				// The actual appending
 				text += addChar;
-				/*std::cout << "int(addChar): " << int(pressedKey) << ", addChar: " << addChar << std::endl;
-				std::cout << "TEXT: " << text << std::endl;
-				showAllKeys();
-				std::getchar();*/
 			}
 		}
 		
-		drawString(initCharPosX, initCharPosY, text, font, charScale);
+		drawString(initCharPosX, initCharPosY, text, font, ScreenWidth(), blinkerPos, charScale);
 
 		// Blinking last character
 		timeCount += fElapsedTime;
@@ -402,12 +421,7 @@ public:
 			timeCount -= maxTimeBlink;
 		}
 
-		if (drawBlinker) drawCharacter(initCharPosX + text.size() * 8, initCharPosY, blinkChar, font, charScale);
-		
-		/*std::vector<uint8_t> a = GetAllPressedKeys();
-		for (int i = 0; i < a.size(); i++) {
-			std::cout << a[i] << std::endl;
-		}*/
+		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale);
 
 		return true;
 	}
