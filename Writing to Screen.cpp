@@ -269,25 +269,26 @@ private:
 		{0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} 	// 0xFF
 		};
 
-	int initCharPosX = 10, initCharPosY = 10;			// Offset to begin drawing the first character
-	unsigned int charWidth = 8, charHeight = 8;			// The grid in which to draw the pixels
+	uint32_t initCharPosX = 10, initCharPosY = 10;								// Offset to begin drawing the first character
+	unsigned int charWidth = 8, charHeight = 8;									// The grid in which to draw the pixels
 	unsigned int charac = 0, charScale = 1;
-	unsigned int minScale = 1, maxScale = 10;			// For zooming
+	unsigned int minScale = 1, maxScale = 10;									// For zooming
 
 	// Keys
 	std::vector<uint8_t> pressedKeys, heldKeys;
 	bool shiftIsHeld = false, backspaceIsHeld = false;
-	std::string text = "C:>", addChar;					// Constant initial text on screen
-	const int initTextSize = text.size();
-	bool newChar = false;
+	std::string initText = "C:>", addChar;										// Constant initial text on screen
+	const int initTextSize = initText.size();
+	bool newChar = false;	
+	std::vector<std::string> history;											// Contains all the typed information. Every command is stored one position of this vector
 
 	// Time and blinking stuff
-	float timeCount;									// Loops from 0 to maxTimeBlink
-	float maxTimeBlink = 0.75;							// Intervals in which the blinking light turns on and off
-	uint8_t blinkChar = 3;								// Which char (based on ascii) to 
+	float timeCount;															// Loops from 0 to maxTimeBlink
+	float maxTimeBlink = 0.75;													// Intervals in which the blinking light turns on and off
+	uint8_t blinkChar = 3;														// Which char (based on ascii) to 
 	bool drawBlinker = true;
-	std::vector<uint32_t> blinkerPos = {0, 0};			// Position to draw the blinker
-	//int maxSingleLineChars;								// Max number of characters able to be displayed given current zoom
+	std::vector<uint32_t> blinkerPos = { initCharPosX, initCharPosY };			// Position to draw the blinker
+	//int maxSingleLineChars;													// Max number of characters able to be displayed given current zoom
 
 public:
 
@@ -347,6 +348,7 @@ public:
 
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {
+		history.push_back(initText);
 		return true;
 	}
 
@@ -396,11 +398,16 @@ public:
 				else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
 				else if (key == 53)							addChar = key - 21;			// SPACE
 				else if (key == 63) {													// BACKSPACE
-					if (text.size() > initTextSize)	text.pop_back();
+					if (history.back().size() > initTextSize)	history.back().pop_back();
 					newChar = false;
 				}
-				else if (key == 84)			addChar = key - 38;							// .
-				else if (key == 86)			addChar = key - 42;							// ,
+				else if (key == 66) {													// ENTER
+					std::cout << "ENTER" << std::endl;
+					history.push_back(initText);
+					newChar = false;
+				}
+				else if (key == 84)							addChar = key - 38;			// .
+				else if (key == 86)							addChar = key - 42;			// ,
 				else newChar = false;
 			}
 
@@ -409,14 +416,16 @@ public:
 				timeCount = 0.0f;
 
 				// The actual appending
-				text += addChar;
+				//initText += addChar;
+				history.back() += addChar;
 			}
 		}
 		
-		
-
-		// Drawing the whole String. If only one character needed, try "drawCharacter"
-		drawString(initCharPosX, initCharPosY, text, font, ScreenWidth(), blinkerPos, charScale);
+		// Printing whole history
+		for (int i = 0; i < history.size(); i++) {
+			// Drawing the whole String. If only one character needed, try "drawCharacter"
+			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1], history[i], font, ScreenWidth(), blinkerPos, charScale);
+		}
 
 		// Blinking of last character
 		timeCount += fElapsedTime;
@@ -438,6 +447,8 @@ public:
 		
 		if (pressedKeys.size() > 0) std::cout << pressedKeys.back() << std::endl;
 
+		// Resetting stuff
+		blinkerPos = { initCharPosX, initCharPosY };
 		return true;
 	}
 };
