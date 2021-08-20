@@ -275,7 +275,7 @@ private:
 	unsigned int minScale = 1, maxScale = 10;			// For zooming
 
 	// Keys
-	std::vector<uint8_t> pressedKey;
+	std::vector<uint8_t> pressedKeys, heldKeys;
 	bool shiftIsHeld = false, backspaceIsHeld = false;
 	std::string text = "C:>", addChar;					// Constant initial text on screen
 	const int initTextSize = text.size();
@@ -328,12 +328,6 @@ public:
 
 		int mod;
 		for (int elemNum = 0; elemNum < str.size(); elemNum++) {
-			// If this character is a SPACE, go to next
-			/*if (str[elemNum] == 32 && elemNum < (str.size() - 1)) {
-				elemNum++;
-				y += charHeight * scale;
-			}*/
-
 			// If screen space ends, jump to next line
 			mod = elemNum % maxSingleLineChars;
 			if (!mod && elemNum) {									
@@ -371,16 +365,17 @@ public:
 		}
 
 		// Getting keys	
-		pressedKey = GetAllPressedKeys();
+		pressedKeys = GetAllPressedKeys();
+		heldKeys = GetAllHeldKeys();
 		shiftIsHeld = isShiftHeld();
 		backspaceIsHeld = isBackspaceHeld();
 
+		// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
 		newChar = true;
-		if (pressedKey.size() > 0) {
-			for (auto key : pressedKey) {
+		if (pressedKeys.size() > 0) {
+			for (auto key : pressedKeys) {
 				addChar = key;	// Default
-
-				// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
+								
 				// olc::PixelGameEngine simply returns different positions for each character.
 				// For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
 
@@ -391,7 +386,13 @@ public:
 					}
 				}
 
-				else if (key >= 27 && key <= 36)			addChar = key + 21;			// Numbers
+				else if (key >= 27 && key <= 36) {
+					addChar = key + 21;													// Numbers
+					if (shiftIsHeld) {
+						 addChar = key + 5;												// Special Number characters
+					}
+				}
+
 				else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
 				else if (key == 53)							addChar = key - 21;			// SPACE
 				else if (key == 63) {													// BACKSPACE
@@ -412,16 +413,30 @@ public:
 			}
 		}
 		
+		
+
+		// Drawing the whole String. If only one character needed, try "drawCharacter"
 		drawString(initCharPosX, initCharPosY, text, font, ScreenWidth(), blinkerPos, charScale);
 
-		// Blinking last character
+		// Blinking of last character
 		timeCount += fElapsedTime;
 		if (timeCount > maxTimeBlink) {
 			drawBlinker = !drawBlinker;
 			timeCount -= maxTimeBlink;
+
+			//// In the case of holding down backspace - Continuous deletion
+			//if (heldKeys.size() > 0) {
+			//	for (auto key : heldKeys) {
+			//		if (key == 63) {					// BACKSPACE
+			//			if (text.size() > initTextSize)	text.pop_back();
+			//		}				
+			//	}
+			//}
 		}
 
 		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale);
+		
+		if (pressedKeys.size() > 0) std::cout << pressedKeys.back() << std::endl;
 
 		return true;
 	}

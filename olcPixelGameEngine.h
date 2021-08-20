@@ -903,6 +903,7 @@ namespace olc
 		// YOOOOO
 		void showAllKeys();
 		std::vector<uint8_t> GetAllPressedKeys() const;
+		std::vector<uint8_t> GetAllHeldKeys() const;
 		bool isShiftHeld();
 		bool isBackspaceHeld();
 
@@ -1803,6 +1804,16 @@ namespace olc
 		for (int i = 0; i < 256; i++) {
 			if (pKeyboardState[i].bPressed)
 				result.push_back(i);				
+		}
+
+		return result;
+	}
+
+	std::vector<uint8_t> PixelGameEngine::GetAllHeldKeys() const {
+		std::vector<uint8_t> result;
+		for (int i = 0; i < 256; i++) {
+			if (pKeyboardState[i].bHeld)
+				result.push_back(i);
 		}
 
 		return result;
