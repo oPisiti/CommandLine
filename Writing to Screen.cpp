@@ -296,6 +296,7 @@ public:
 		sAppName = "Putting text to screen";
 	}
 
+	// Draws a single character
 	void drawCharacter(int32_t x, int32_t y, uint8_t Char, std::vector<std::vector<uint8_t>>& data, unsigned int scale = 1,
 		olc::Pixel color = olc::RED, unsigned int charWidth = 8, unsigned int charHeight = 8) {
 
@@ -321,6 +322,7 @@ public:
 		}
 	}
 
+	// Draws a full string. If screen width not enough, jumps to next line
 	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, unsigned int scale = 1,
 		olc::Pixel color = olc::RED, unsigned int charWidth = 8, unsigned int charHeight = 8) {
 
@@ -345,10 +347,81 @@ public:
 		}
 		blinkerPos = { initialX + uint32_t(charWidth * mod * scale), uint32_t(y)};
 	}
+	
+	// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
+	void fixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys, const std::vector<uint8_t>& heldKeys, bool shiftIsHeld, bool backspaceIsHeld) {
+		for (auto key : pressedKeys) {
+			addChar = key;	// Default
+
+			// olc::PixelGameEngine simply returns different positions for each character.
+			// For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
+
+			if (key >= 0 && key <= 26) {
+				addChar = key + 96;													// a-z
+				if (shiftIsHeld) {													// SHIFT
+					addChar = key + 64;												// A-Z
+				}
+
+				// ´ held and no SHIFT	
+				if (std::find(heldKeys.begin(), heldKeys.end(), 91) != heldKeys.end()) {
+					switch (key) {
+					case 1:
+						addChar = 160;
+						break;
+					case 5:
+						addChar = 130;
+						break;
+					case 9:
+						addChar = 161;
+						break;
+					case 15:
+						addChar = 162;
+						break;
+					case 21:
+						addChar = 163;
+						break;
+					}
+				}
+			}
+
+			else if (key >= 27 && key <= 36) {
+				addChar = key + 21;													// Numbers
+				if (shiftIsHeld) {
+					addChar = key + 5;												// Special Number characters
+				}
+			}
+
+			else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
+			else if (key == 53)							addChar = key - 21;			// SPACE
+			else if (key == 63) {													// BACKSPACE
+				if (history.back().size() > initTextSize)	history.back().pop_back();
+				newChar = false;
+			}
+			else if (key == 66) {													// ENTER
+				history.push_back(initText);
+				newChar = false;
+			}
+			else if (key == 84)							addChar = key - 38;			// .
+			else if (key == 86)							addChar = key - 42;			// ,
+			else newChar = false;
+		}
+
+		if (newChar) {
+			// Resetting the count if user typed something - Prevents unnecessary blinking all the time (weird)
+			timeCount = 0.0f;
+
+			// The actual appending
+			history.back() += addChar;
+		}
+	}
 
 	// Called once at the start, so create things here
-	bool OnUserCreate() override {
+	bool OnUserCreate() override {		
 		history.push_back(initText);
+		/*for (uint8_t i = 0; i < 255; i++) {
+			history.back() += i;
+		}*/
+
 		return true;
 	}
 
@@ -375,56 +448,13 @@ public:
 		// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
 		newChar = true;
 		if (pressedKeys.size() > 0) {
-			for (auto key : pressedKeys) {
-				addChar = key;	// Default
-								
-				// olc::PixelGameEngine simply returns different positions for each character.
-				// For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
-
-				if (key >= 0 && key <= 26) {
-					addChar = key + 96;													// a-z
-					if (shiftIsHeld) {													// SHIFT
-						addChar = key + 64;												// A-Z
-					}
-				}
-
-				else if (key >= 27 && key <= 36) {
-					addChar = key + 21;													// Numbers
-					if (shiftIsHeld) {
-						 addChar = key + 5;												// Special Number characters
-					}
-				}
-
-				else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
-				else if (key == 53)							addChar = key - 21;			// SPACE
-				else if (key == 63) {													// BACKSPACE
-					if (history.back().size() > initTextSize)	history.back().pop_back();
-					newChar = false;
-				}
-				else if (key == 66) {													// ENTER
-					std::cout << "ENTER" << std::endl;
-					history.push_back(initText);
-					newChar = false;
-				}
-				else if (key == 84)							addChar = key - 38;			// .
-				else if (key == 86)							addChar = key - 42;			// ,
-				else newChar = false;
-			}
-
-			if (newChar) {
-				// Resetting the count if user typed something - Prevents unnecessary blinking all the time (weird)
-				timeCount = 0.0f;
-
-				// The actual appending
-				//initText += addChar;
-				history.back() += addChar;
-			}
+			fixToASCII(addChar, pressedKeys, heldKeys, shiftIsHeld, backspaceIsHeld);
 		}
 		
 		// Printing whole history
 		for (int i = 0; i < history.size(); i++) {
 			// Drawing the whole String. If only one character needed, try "drawCharacter"
-			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1], history[i], font, ScreenWidth(), blinkerPos, charScale);
+			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1], history[i], font, ScreenWidth(), blinkerPos, charScale, olc::GREEN);
 		}
 
 		// Blinking of last character
@@ -443,9 +473,9 @@ public:
 			//}
 		}
 
-		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale);
+		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale, olc::GREEN);
 		
-		if (pressedKeys.size() > 0) std::cout << pressedKeys.back() << std::endl;
+		//if (pressedKeys.size() > 0) std::cout << pressedKeys.back() << std::endl;
 
 		// Resetting stuff
 		blinkerPos = { initCharPosX, initCharPosY };
