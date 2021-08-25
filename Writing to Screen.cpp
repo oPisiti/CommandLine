@@ -9,7 +9,9 @@ class MyText : public olc::PixelGameEngine {
 private:
 	olc::Pixel backColor = {50, 50, 50, 255};
 
-	uint32_t initCharPosX = 10, initCharPosY = 10;								// Offset to begin drawing the first character
+	uint32_t baseCharPosX = 10, baseCharPosY = 10;
+	uint32_t initCharPosX = baseCharPosX, initCharPosY = baseCharPosY;			// Offset to begin drawing the first character
+	long beginRenderPosY = 0;													// Rendering begins in this position. Changes when user scrolls
 	unsigned int charWidth = 8, charHeight = 8;									// The grid in which to draw the pixels
 	unsigned int charac = 0, charScale = 1;
 	unsigned int minScale = 1, maxScale = 10;									// For zooming
@@ -63,7 +65,7 @@ public:
 	}
 
 	// Draws a full string. If screen width not enough, jumps to next line
-	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, unsigned int scale = 1,
+	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, uint32_t beginRenderPosY, unsigned int scale = 1,
 		olc::Pixel color = olc::RED, unsigned int charWidth = 8, unsigned int charHeight = 8) {
 
 		int32_t y = initialY;
@@ -158,6 +160,8 @@ public:
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
 		history.push_back(initText);
+
+		// To display all characters
 		/*for (uint8_t i = 0; i < 255; i++) {
 			history.back() += i;
 		}*/
@@ -169,21 +173,41 @@ public:
 	bool OnUserUpdate(float fElapsedTime) override {
 		Clear(backColor);
 
-		// Zooming - Each wheel tick equals 120 in value (??)
-		if (GetMouseWheel()) {
-			int wheel = GetMouseWheel() / 120;
-
-			charScale += wheel;
-			if (charScale < minScale) charScale = minScale;
-			else if (charScale > maxScale) charScale = maxScale;
-
-		}
-
 		// Getting keys	
 		pressedKeys = GetAllPressedKeys();
 		heldKeys = GetAllHeldKeys();
 		shiftIsHeld = isShiftHeld();
 		backspaceIsHeld = isBackspaceHeld();
+
+		// Zooming - Each wheel tick equals 120 in value (??)
+		if (GetMouseWheel()) {			
+			int wheel = GetMouseWheel() / 120;
+
+			// When zooming
+			if (std::find(heldKeys.begin(), heldKeys.end(), 56) != heldKeys.end()) {		// 56: CTRL
+				
+				charScale += wheel;
+				if (charScale < minScale) charScale = minScale;
+				else if (charScale > maxScale) charScale = maxScale;
+			}
+
+			// When scrolling
+			else{
+				int num = -wheel * charScale * charHeight;
+
+				if (num < 0) {
+					if (beginRenderPosY > baseCharPosX)		beginRenderPosY += num;
+					else									beginRenderPosY = 0;
+				}
+				else										beginRenderPosY += num; 
+				
+				/*if (num < 0) {
+					if (beginRenderPosY > baseCharPosX)		beginRenderPosY -= num;
+					else									beginRenderPosY = 0;
+				}
+				else										beginRenderPosY -= num;*/
+			}
+		}
 
 		// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
 		newChar = true;
@@ -191,10 +215,17 @@ public:
 			fixToASCII(addChar, pressedKeys, heldKeys, shiftIsHeld, backspaceIsHeld);
 		}
 		
+		//std::cout << "beginRenderPosY: " << beginRenderPosY << std::endl;
+
 		// Printing whole history
+		//blinkerPos[1] = beginRenderPosY;
 		for (int i = 0; i < history.size(); i++) {
 			// Drawing the whole String. If only one character needed, try "drawCharacter"
-			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1], history[i], font, ScreenWidth(), blinkerPos, charScale, olc::GREEN);
+			//if (blinkerPos[1] <  ScreenHeight()) {
+				//drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1], history[i], font, ScreenWidth(), blinkerPos, charScale, olc::GREEN);
+				drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1] - beginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, beginRenderPosY, charScale, olc::GREEN);
+				//std::cout << "Printing: " << history[i] << std::endl;
+			//}
 		}
 
 		// Blinking of last character
