@@ -18,25 +18,26 @@ private:
 	uint8_t  minScale  = 1, maxScale = 10;	 // For zooming
 
 	// Keys
-	std::vector<uint8_t> pressedKeys, heldKeys;
-	bool shiftIsHeld = false, backspaceIsHeld = false;
-	std::string initText = "C:>", addChar;										// Constant initial text on screen
+	std::vector<uint8_t>     pressedKeys, heldKeys;
+	std::vector<std::string> history;										// Contains all the typed information. Every command is stored one position of this vector
+	std::string              initText = "C:>", addChar;						// Constant initial text on screen
+	
+	bool 	  shiftIsHeld = false, backspaceIsHeld = false;
 	const int initTextSize = initText.size();
-	bool newChar = false;	
-	std::vector<std::string> history;											// Contains all the typed information. Every command is stored one position of this vector
+	bool      newChar = false;	
 
 	// Time and blinking stuff
-	float timeCount;															// Loops from 0 to maxTimeBlink
-	float maxTimeBlink = 0.75;													// Intervals in which the blinking light turns on and off
-	uint8_t blinkChar = 3;														// Which char (based on ascii) to 
-	bool drawBlinker = true;
-	std::vector<uint32_t> blinkerPos = { initCharPosX, initCharPosY };			// Position to draw the blinker
-	//int maxSingleLineChars;													// Max number of characters able to be displayed given current zoom
+	float   timeCount;														// Loops from 0 to maxTimeBlink
+	float   maxTimeBlink = 0.75;												// Intervals in which the blinking light turns on and off
+	uint8_t blinkChar = 3;													// Which char (based on ascii) to 
+	bool    drawBlinker = true;
+
+	std::vector<uint32_t> blinkerPos = { initCharPosX, initCharPosY };		// Position to draw the blinker
 
 public:
 
 	MyText() {
-		sAppName = "Putting text to screen";
+		sAppName = "Custom Terminal";
 	}
 
 	// Draws a single character
@@ -162,11 +163,6 @@ public:
 	bool OnUserCreate() override {		
 		history.push_back(initText);
 
-		// To display all characters
-		/*for (uint8_t i = 0; i < 255; i++) {
-			history.back() += i;
-		}*/
-
 		return true;
 	}
 
@@ -201,12 +197,6 @@ public:
 					else									beginRenderPosY = 0;
 				}
 				else										beginRenderPosY += num; 
-				
-				/*if (num < 0) {
-					if (beginRenderPosY > baseCharPosX)		beginRenderPosY -= num;
-					else									beginRenderPosY = 0;
-				}
-				else										beginRenderPosY -= num;*/
 			}
 		}
 
@@ -216,17 +206,11 @@ public:
 			fixToASCII(addChar, pressedKeys, heldKeys, shiftIsHeld, backspaceIsHeld);
 		}
 		
-		//std::cout << "beginRenderPosY: " << beginRenderPosY << std::endl;
-
 		// Printing whole history
-		//blinkerPos[1] = beginRenderPosY;
+		// Drawing the whole String. If only one character needed, try "drawCharacter"
 		for (int i = 0; i < history.size(); i++) {
-			// Drawing the whole String. If only one character needed, try "drawCharacter"
-			//if (blinkerPos[1] <  ScreenHeight()) {
-				//drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1], history[i], font, ScreenWidth(), blinkerPos, charScale, olc::GREEN);
-				drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1] - beginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, beginRenderPosY, charScale, olc::GREEN);
-				//std::cout << "Printing: " << history[i] << std::endl;
-			//}
+			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1] - beginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, beginRenderPosY, charScale, olc::GREEN);
+
 		}
 
 		// Blinking of last character
@@ -234,20 +218,10 @@ public:
 		if (timeCount > maxTimeBlink) {
 			drawBlinker = !drawBlinker;
 			timeCount -= maxTimeBlink;
-
-			//// In the case of holding down backspace - Continuous deletion
-			//if (heldKeys.size() > 0) {
-			//	for (auto key : heldKeys) {
-			//		if (key == 63) {					// BACKSPACE
-			//		}				
-			//	}
-			//}
 		}
 
 		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale, olc::GREEN);
 		
-		//if (pressedKeys.size() > 0) std::cout << pressedKeys.back() << std::endl;
-
 		// Resetting stuff
 		blinkerPos = { initCharPosX, initCharPosY };
 		return true;
