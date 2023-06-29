@@ -1,9 +1,11 @@
 #define OLC_PGE_APPLICATION
 
-#include "olcPixelGameEngine.h"
 #include <iostream>
-#include <vector>
 #include "Font.h"
+#include <fstream>
+#include "olcPixelGameEngine.h"
+#include <sstream>
+#include <vector>
 
 class MyText : public olc::PixelGameEngine {
 private:
@@ -26,13 +28,17 @@ private:
 	const int initTextSize = initText.size();
 	bool      newChar = false;	
 
-	// Time and blinking stuff
+	// Time and blinking
 	float   timeCount;														// Loops from 0 to maxTimeBlink
-	float   maxTimeBlink = 0.75;												// Intervals in which the blinking light turns on and off
+	float   maxTimeBlink = 0.75;											// Intervals in which the blinking light turns on and off
 	uint8_t blinkChar = 3;													// Which char (based on ascii) to 
 	bool    drawBlinker = true;
 
 	std::vector<uint32_t> blinkerPos = { initCharPosX, initCharPosY };		// Position to draw the blinker
+
+	// Commands to terminal
+	std::string sTemporaryOutputFileName = "output.terminalApp.text";
+	std::string sTerminalOutput = "";
 
 public:
 
@@ -42,7 +48,7 @@ public:
 
 	// Draws a single character
 	void drawCharacter(int32_t x, int32_t y, uint8_t Char, std::vector<std::vector<uint8_t>>& data, unsigned int scale = 1,
-		olc::Pixel color = olc::RED, unsigned int charWidth = 8, unsigned int charHeight = 8) {
+		olc::Pixel color = olc::RED) {
 
 		uint8_t curPosX, curPosY;		// Positions inside the font matrix
 		int32_t screenX, screenY;		// Positions regarding the screen pixels
@@ -68,7 +74,7 @@ public:
 
 	// Draws a full string. If screen width not enough, jumps to next line
 	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, uint32_t beginRenderPosY, unsigned int scale = 1,
-		olc::Pixel color = olc::RED, unsigned int charWidth = 8, unsigned int charHeight = 8) {
+		olc::Pixel color = olc::RED) {
 
 		int32_t y = initialY;
 		int maxSingleLineChars = (screenWidth - initialX) / (charWidth * scale);
@@ -81,7 +87,7 @@ public:
 				y += charHeight * scale;
 			}
 
-			drawCharacter(initialX + charWidth * mod * scale, y, str[elemNum], data, scale, color, charWidth, charHeight);
+			drawCharacter(initialX + charWidth * mod * scale, y, str[elemNum], data, scale, color);
 		}
 
 		// Adjusting the blinker position
@@ -91,9 +97,23 @@ public:
 		}
 		blinkerPos = { initialX + uint32_t(charWidth * mod * scale), uint32_t(y)};
 	}
-	
-	// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
-	void fixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys, const std::vector<uint8_t>& heldKeys, bool shiftIsHeld, bool backspaceIsHeld) {
+
+	// Executes a command to the appropriate terminal
+	// A temporary output file is used and then the contents are read and put into 
+	// TODO: Check if works
+	void executeCommand(std::string sCommand){
+		sCommand += " > " + sTemporaryOutputFileName;
+		std::system(sCommand.data());
+
+		// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
+		std::stringstream buffer; 
+		buffer << std::ifstream(sTemporaryOutputFileName).rdbuf();
+
+		sTerminalOutput = buffer.str();
+	}
+
+	// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
+	void fixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys) {
 		for (auto key : pressedKeys) {
 			addChar = key;	// Default
 
@@ -171,9 +191,9 @@ public:
 		Clear(backColor);
 
 		// Getting keys	
-		pressedKeys = GetAllPressedKeys();
-		heldKeys = GetAllHeldKeys();
-		shiftIsHeld = isShiftHeld();
+		pressedKeys     = GetAllPressedKeys();
+		heldKeys        = GetAllHeldKeys();
+		shiftIsHeld     = isShiftHeld();
 		backspaceIsHeld = isBackspaceHeld();
 
 		// Zooming - Each wheel tick equals 120 in value (??)
@@ -203,7 +223,7 @@ public:
 		// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
 		newChar = true;
 		if (pressedKeys.size() > 0) {
-			fixToASCII(addChar, pressedKeys, heldKeys, shiftIsHeld, backspaceIsHeld);
+			fixToASCII(addChar, pressedKeys);
 		}
 		
 		// Printing whole history
