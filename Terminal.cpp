@@ -1,5 +1,11 @@
 #define OLC_PGE_APPLICATION
 
+#ifdef _WIN32
+#define OS_WINDOWS true
+#else
+#define OS_WINDOWS false
+#endif
+
 #include <iostream>
 #include "Font.h"
 #include <fstream>
@@ -22,11 +28,11 @@ private:
 	// Keys
 	std::vector<uint8_t>     pressedKeys, heldKeys;
 	std::vector<std::string> history;										  // Contains all the typed information. Every command is stored one position of this vector
-	std::string              bIinitText = "C:>", addChar;					  // Constant initial text on screen
+	std::string              sUser = "", addChar;					  		  // Constant initial text on screen
+	std::string 		     sWorkingDir = "";
 	
 	bool 	  bShiftIsHeld  = false, bBackspaceIsHeld = false;
-	const int iInitTextSize = bIinitText.size();
-	bool      newChar = false;	
+	bool      bNewChar = false;	
 
 	// Time and blinking
 	float   fTimeCount;														  // Loops from 0 to fMaxTimeBlink
@@ -37,7 +43,7 @@ private:
 	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };	  // Position to draw the blinker
 
 	// Commands to terminal
-	std::string sTemporaryOutputFileName = "output.terminalApp.text";
+	std::string sTemporaryOutputFileName = ".output.terminalApp.text";
 	std::string sTerminalOutput = "";
 
 public:
@@ -157,14 +163,15 @@ public:
 			else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
 			else if (key == 53)							addChar = key - 21;			// SPACE
 			else if (key == 63) {													// BACKSPACE
-				if (history.back().size() > iInitTextSize)	history.back().pop_back();
-				newChar = false;
+				if (history.back().size() > GetFixText().length()) history.back().pop_back();
+				bNewChar = false;
 			}
 			else if (key == 66) {													// ENTER
 				// Removing the initText
+				uint8_t iTrashLength = GetFixText().length();
 				std::string sOnlyCommand = history.back().substr(
-										    bIinitText.length(), 
-										    history.back().length() - bIinitText.length());
+										    iTrashLength, 
+										    history.back().length() - iTrashLength);
 				
 				// Executing the command and showing output
 				ExecuteCommand(sOnlyCommand);
@@ -174,15 +181,18 @@ public:
 					else		  history.back() += c;
 				}
 
-				history.push_back(bIinitText);
-				newChar = false;
+				// User may have used a command that changes directory
+				UpdateWorkingDirString();
+
+				history.push_back(GetFixText());
+				bNewChar = false;
 			}
 			else if (key == 84)							addChar = key - 38;			// .
 			else if (key == 86)							addChar = key - 42;			// ,
-			else newChar = false;
+			else bNewChar = false;
 		}
 
-		if (newChar) {
+		if (bNewChar) {
 			// Resetting the count if user typed something - Prevents unnecessary blinking all the time (weird)
 			fTimeCount = 0.0f;
 
@@ -190,10 +200,34 @@ public:
 			history.back() += addChar;
 		}
 	}
+	
+	// Returns the fix part of every new command line
+	std::string GetFixText(){
+		std::string ans = sUser + "@" + sWorkingDir ;
+		return ans;
+	}
+
+	// Updates the variable sUser
+	void UpdateUserString(){
+		if(OS_WINDOWS) ExecuteCommand("echo %\\USERNAME%");
+		else 		   ExecuteCommand("whoami");
+
+		sUser = sTerminalOutput.substr(0, sTerminalOutput.length() - 1);
+	}
+
+	// Updates the variable sWorkingDir
+	void UpdateWorkingDirString(){
+		if(OS_WINDOWS) ExecuteCommand("cd");
+		else 		   ExecuteCommand("pwd");
+
+		sWorkingDir = sTerminalOutput.substr(0, sTerminalOutput.length() - 1) + ": ";
+	}
 
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
-		history.push_back(bIinitText);
+		UpdateUserString();
+		UpdateWorkingDirString();
+		history.push_back(GetFixText());
 
 		return true;
 	}
@@ -233,7 +267,7 @@ public:
 		}
 
 		// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
-		newChar = true;
+		bNewChar = true;
 		if (pressedKeys.size() > 0) {
 			fixToASCII(addChar, pressedKeys);
 		}
