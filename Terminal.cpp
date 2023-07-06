@@ -101,7 +101,7 @@ public:
 	// Executes a command to the appropriate terminal
 	// A temporary output file is used and then the contents are read and put into 
 	void ExecuteCommand(std::string sCommand){
-		sCommand += " > " + sTemporaryOutputFileName;
+		sCommand += " > " + sTemporaryOutputFileName + " 2>&1";
 		std::system(sCommand.data());
 
 		// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
