@@ -11,30 +11,30 @@ class MyText : public olc::PixelGameEngine {
 private:
 	olc::Pixel backColor = {50, 50, 50, 255};
 
-	uint32_t baseCharPosX    = 10, baseCharPosY = 10;
-	uint32_t initCharPosX    = baseCharPosX, initCharPosY = baseCharPosY;	// Offset to begin drawing the first character
-	long     beginRenderPosY = 0;											// Rendering begins in this position. Changes when user scrolls
+	uint32_t iBaseCharPosX    = 10, iBaseCharPosY = 10;
+	uint32_t iInitCharPosX    = iBaseCharPosX, iInitCharPosY = iBaseCharPosY;	// Offset to begin drawing the first character
+	long     lBeginRenderPosY = 0;											// Rendering begins in this position. Changes when user scrolls
 	
-	uint8_t  charWidth = 8, charHeight = 8;	 // The grid in which to draw the pixels
-	uint8_t  charac    = 0, charScale = 1;
-	uint8_t  minScale  = 1, maxScale = 10;	 // For zooming
+	uint8_t  iCharWidth = 8, iCharHeight = 8;	 // The grid in which to draw the pixels
+	uint8_t  charac     = 0, iCharScale = 1;
+	uint8_t  iMinScale  = 1, iMaxScale = 10;	 // For zooming
 
 	// Keys
 	std::vector<uint8_t>     pressedKeys, heldKeys;
 	std::vector<std::string> history;										// Contains all the typed information. Every command is stored one position of this vector
-	std::string              initText = "C:>", addChar;						// Constant initial text on screen
+	std::string              bIinitText = "C:>", addChar;						// Constant initial text on screen
 	
-	bool 	  shiftIsHeld = false, backspaceIsHeld = false;
-	const int initTextSize = initText.size();
+	bool 	  bShiftIsHeld  = false, bBackspaceIsHeld = false;
+	const int iInitTextSize = bIinitText.size();
 	bool      newChar = false;	
 
 	// Time and blinking
-	float   timeCount;														// Loops from 0 to maxTimeBlink
-	float   maxTimeBlink = 0.75;											// Intervals in which the blinking light turns on and off
-	uint8_t blinkChar = 3;													// Which char (based on ascii) to 
-	bool    drawBlinker = true;
+	float   fTimeCount;														// Loops from 0 to fMaxTimeBlink
+	float   fMaxTimeBlink = 0.75;											// Intervals in which the blinking light turns on and off
+	uint8_t iBlinkChar = 3;													// Which char (based on ascii) to 
+	bool    bDrawBlinker = true;
 
-	std::vector<uint32_t> blinkerPos = { initCharPosX, initCharPosY };		// Position to draw the blinker
+	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };		// Position to draw the blinker
 
 	// Commands to terminal
 	std::string sTemporaryOutputFileName = "output.terminalApp.text";
@@ -53,10 +53,10 @@ public:
 		uint8_t curPosX, curPosY;		// Positions inside the font matrix
 		int32_t screenX, screenY;		// Positions regarding the screen pixels
 
-		for (int hei = 0; hei < charHeight; hei++) {
+		for (int hei = 0; hei < iCharHeight; hei++) {
 			curPosY = hei;
 			screenY = y + hei * scale;
-			for (int wid = 0; wid < charWidth; wid++) {
+			for (int wid = 0; wid < iCharWidth; wid++) {
 				curPosX = wid;
 				screenX = x + wid * scale;
 
@@ -73,29 +73,29 @@ public:
 	}
 
 	// Draws a full string. If screen width not enough, jumps to next line
-	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, uint32_t beginRenderPosY, unsigned int scale = 1,
+	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, uint32_t lBeginRenderPosY, unsigned int scale = 1,
 		olc::Pixel color = olc::RED) {
 
 		int32_t y = initialY;
-		int maxSingleLineChars = (screenWidth - initialX) / (charWidth * scale);
+		int maxSingleLineChars = (screenWidth - initialX) / (iCharWidth * scale);
 
 		int mod;
 		for (int elemNum = 0; elemNum < str.size(); elemNum++) {
 			// If screen space ends, jump to next line
 			mod = elemNum % maxSingleLineChars;
 			if (!mod && elemNum) {									
-				y += charHeight * scale;
+				y += iCharHeight * scale;
 			}
 
-			drawCharacter(initialX + charWidth * mod * scale, y, str[elemNum], data, scale, color);
+			drawCharacter(initialX + iCharWidth * mod * scale, y, str[elemNum], data, scale, color);
 		}
 
 		// Adjusting the blinker position
 		mod = str.size() % maxSingleLineChars;
 		if (!mod) {
-			y += charHeight * scale;
+			y += iCharHeight * scale;
 		}
-		blinkerPos = { initialX + uint32_t(charWidth * mod * scale), uint32_t(y)};
+		blinkerPos = { initialX + uint32_t(iCharWidth * mod * scale), uint32_t(y)};
 	}
 
 	// Executes a command to the appropriate terminal
@@ -121,7 +121,7 @@ public:
 
 			if (key >= 0 && key <= 26) {
 				addChar = key + 96;													// a-z
-				if (shiftIsHeld) {													// SHIFT
+				if (bShiftIsHeld) {													// SHIFT
 					addChar = key + 64;												// A-Z
 				}
 
@@ -149,7 +149,7 @@ public:
 
 			else if (key >= 27 && key <= 36) {
 				addChar = key + 21;													// Numbers
-				if (shiftIsHeld) {
+				if (bShiftIsHeld) {
 					addChar = key + 5;												// Special Number characters
 				}
 			}
@@ -157,14 +157,14 @@ public:
 			else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
 			else if (key == 53)							addChar = key - 21;			// SPACE
 			else if (key == 63) {													// BACKSPACE
-				if (history.back().size() > initTextSize)	history.back().pop_back();
+				if (history.back().size() > iInitTextSize)	history.back().pop_back();
 				newChar = false;
 			}
 			else if (key == 66) {													// ENTER
 				// Removing the initText
 				std::string sOnlyCommand = history.back().substr(
-										    initText.length(), 
-										    history.back().length() - initText.length());
+										    bIinitText.length(), 
+										    history.back().length() - bIinitText.length());
 				
 				// Executing the command and showing output
 				ExecuteCommand(sOnlyCommand);
@@ -174,7 +174,7 @@ public:
 					else		  history.back() += c;
 				}
 
-				history.push_back(initText);
+				history.push_back(bIinitText);
 				newChar = false;
 			}
 			else if (key == 84)							addChar = key - 38;			// .
@@ -184,7 +184,7 @@ public:
 
 		if (newChar) {
 			// Resetting the count if user typed something - Prevents unnecessary blinking all the time (weird)
-			timeCount = 0.0f;
+			fTimeCount = 0.0f;
 
 			// The actual appending
 			history.back() += addChar;
@@ -193,7 +193,7 @@ public:
 
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
-		history.push_back(initText);
+		history.push_back(bIinitText);
 
 		return true;
 	}
@@ -205,8 +205,8 @@ public:
 		// Getting keys	
 		pressedKeys     = GetAllPressedKeys();
 		heldKeys        = GetAllHeldKeys();
-		shiftIsHeld     = isShiftHeld();
-		backspaceIsHeld = isBackspaceHeld();
+		bShiftIsHeld     = isShiftHeld();
+		bBackspaceIsHeld = isBackspaceHeld();
 
 		// Zooming - Each wheel tick equals 120 in value (??)
 		if (GetMouseWheel()) {			
@@ -215,24 +215,24 @@ public:
 			// When zooming
 			if (std::find(heldKeys.begin(), heldKeys.end(), 56) != heldKeys.end()) {		// 56: CTRL
 				
-				charScale += wheel;
-				if (charScale < minScale) charScale = minScale;
-				else if (charScale > maxScale) charScale = maxScale;
+				iCharScale += wheel;
+				if (iCharScale < iMinScale) iCharScale = iMinScale;
+				else if (iCharScale > iMaxScale) iCharScale = iMaxScale;
 			}
 
 			// When scrolling
 			else{
-				int num = -wheel * charScale * charHeight;
+				int num = -wheel * iCharScale * iCharHeight;
 
 				if (num < 0) {
-					if (beginRenderPosY > baseCharPosX)		beginRenderPosY += num;
-					else									beginRenderPosY = 0;
+					if (lBeginRenderPosY > iBaseCharPosX)		lBeginRenderPosY += num;
+					else									lBeginRenderPosY = 0;
 				}
-				else										beginRenderPosY += num; 
+				else										lBeginRenderPosY += num; 
 			}
 		}
 
-		// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
+		// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
 		newChar = true;
 		if (pressedKeys.size() > 0) {
 			fixToASCII(addChar, pressedKeys);
@@ -241,21 +241,21 @@ public:
 		// Printing whole history
 		// Drawing the whole String. If only one character needed, try "drawCharacter"
 		for (int i = 0; i < history.size(); i++) {
-			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1] - beginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, beginRenderPosY, charScale, olc::GREEN);
+			drawString(iInitCharPosX, i ? blinkerPos[1] + iCharHeight * iCharScale : blinkerPos[1] - lBeginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, lBeginRenderPosY, iCharScale, olc::GREEN);
 
 		}
 
 		// Blinking of last character
-		timeCount += fElapsedTime;
-		if (timeCount > maxTimeBlink) {
-			drawBlinker = !drawBlinker;
-			timeCount -= maxTimeBlink;
+		fTimeCount += fElapsedTime;
+		if (fTimeCount > fMaxTimeBlink) {
+			bDrawBlinker = !bDrawBlinker;
+			fTimeCount -= fMaxTimeBlink;
 		}
 
-		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale, olc::GREEN);
+		if (bDrawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], iBlinkChar, font, iCharScale, olc::GREEN);
 		
 		// Resetting stuff
-		blinkerPos = { initCharPosX, initCharPosY };
+		blinkerPos = { iInitCharPosX, iInitCharPosY };
 		return true;
 	}
 };
