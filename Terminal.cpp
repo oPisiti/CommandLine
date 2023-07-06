@@ -19,7 +19,7 @@ private:
 
 	uint32_t iBaseCharPosX    = 10, iBaseCharPosY = 10;
 	uint32_t iInitCharPosX    = iBaseCharPosX, iInitCharPosY = iBaseCharPosY; // Offset to begin drawing the first character
-	long     lBeginRenderPosY = 0;											  // Rendering begins in this position. Changes when user scrolls
+	int32_t  iBeginRenderPosY = 0;											  // Rendering begins in this position. Changes when user scrolls
 	
 	uint8_t  iCharWidth = 8, iCharHeight = 8;	  							  // The grid in which to draw the pixels
 	uint8_t  charac     = 0, iCharScale = 1;
@@ -78,7 +78,7 @@ public:
 	}
 
 	// Draws a full string. If screen width not enough, jumps to next line
-	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<uint32_t>& blinkerPos, uint32_t lBeginRenderPosY, olc::Pixel color = olc::RED) {
+	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<uint32_t>& blinkerPos, uint32_t iBeginRenderPosY, olc::Pixel color = olc::RED) {
 
 		int screenWidth = ScreenWidth();
 
@@ -92,6 +92,10 @@ public:
 			if (!mod && elemNum) {									
 				y += iCharHeight * iCharScale;
 			}
+
+			// Too high up or down on screen space
+			if(y < 0)     		continue;
+			if(y > screenWidth) break;
 
 			drawCharacter(initialX + iCharWidth * mod * iCharScale, y, str[elemNum], color);
 		}
@@ -259,10 +263,10 @@ public:
 				int num = -wheel * iCharScale * iCharHeight;
 
 				if (num < 0) {
-					if (lBeginRenderPosY > iBaseCharPosX)		lBeginRenderPosY += num;
-					else									lBeginRenderPosY = 0;
+					if (iBeginRenderPosY > iBaseCharPosX)	iBeginRenderPosY += num;
+					else									iBeginRenderPosY = 0;
 				}
-				else										lBeginRenderPosY += num; 
+				else										iBeginRenderPosY += num; 
 			}
 		}
 
@@ -275,11 +279,12 @@ public:
 		// Printing whole history
 		// Drawing the whole String. If only one character needed, try "drawCharacter"
 		for (int i = 0; i < history.size(); i++) {
+
 			drawString(iInitCharPosX,
-			 		   i ? blinkerPos[1] + iCharHeight * iCharScale : blinkerPos[1] - lBeginRenderPosY,
+			 		   i ? blinkerPos[1] + iCharHeight * iCharScale : blinkerPos[1] - iBeginRenderPosY,
 			 		   history[i],
 			 		   blinkerPos,
-			 		   lBeginRenderPosY,
+			 		   iBeginRenderPosY,
 			 		   olc::GREEN);
 
 		}
