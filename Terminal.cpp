@@ -9,18 +9,15 @@
 
 class MyText : public olc::PixelGameEngine {
 private:
-	// Rendering
 	olc::Pixel backColor = {50, 50, 50, 255};
 
 	uint32_t baseCharPosX    = 10, baseCharPosY = 10;
 	uint32_t initCharPosX    = baseCharPosX, initCharPosY = baseCharPosY;	// Offset to begin drawing the first character
-	uint32_t beginRenderPosY = 0;											// Rendering begins in this position. Changes when user scrolls
+	long     beginRenderPosY = 0;											// Rendering begins in this position. Changes when user scrolls
 	
-	uint8_t  charWidth = 8, charHeight = 8;	 								// The grid in which to draw the pixels
-	uint8_t  charScale = 1;
-	uint8_t  minScale  = 1, maxScale = 10;	 								// For zooming
-	
-	uint8_t  iLinesOnScreenCount = 0;		 								// How many lines are visible on screen
+	uint8_t  charWidth = 8, charHeight = 8;	 // The grid in which to draw the pixels
+	uint8_t  charac    = 0, charScale = 1;
+	uint8_t  minScale  = 1, maxScale = 10;	 // For zooming
 
 	// Keys
 	std::vector<uint8_t>     pressedKeys, heldKeys;
@@ -50,22 +47,23 @@ public:
 	}
 
 	// Draws a single character
-	void DrawCharacter(int32_t x, int32_t y, uint8_t Char, olc::Pixel color = olc::RED) {
+	void drawCharacter(int32_t x, int32_t y, uint8_t Char, std::vector<std::vector<uint8_t>>& data, unsigned int scale = 1,
+		olc::Pixel color = olc::RED) {
 
 		uint8_t curPosX, curPosY;		// Positions inside the font matrix
 		int32_t screenX, screenY;		// Positions regarding the screen pixels
 
 		for (int hei = 0; hei < charHeight; hei++) {
 			curPosY = hei;
-			screenY = y + hei * charScale;
+			screenY = y + hei * scale;
 			for (int wid = 0; wid < charWidth; wid++) {
 				curPosX = wid;
-				screenX = x + wid * charScale;
+				screenX = x + wid * scale;
 
 				// https://stackoverflow.com/questions/2249731/how-do-i-get-bit-by-bit-data-from-an-integer-value-in-c
-				if ((font[Char][curPosY] & (1 << curPosX)) >> curPosX) {
-					for (int i = 0; i < charScale; i++) {
-						for (int j = 0; j < charScale; j++) {
+				if ((data[Char][curPosY] & (1 << curPosX)) >> curPosX) {
+					for (int i = 0; i < scale; i++) {
+						for (int j = 0; j < scale; j++) {
 							Draw(screenX + i, screenY + j, color);
 						}
 					}
@@ -75,10 +73,9 @@ public:
 	}
 
 	// Draws a full string. If screen width not enough, jumps to next line
-	void DrawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, std::vector<uint32_t>& blinkerPos, unsigned int scale = 1,
+	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, uint32_t beginRenderPosY, unsigned int scale = 1,
 		olc::Pixel color = olc::RED) {
 
-		int screenWidth = ScreenWidth();
 		int32_t y = initialY;
 		int maxSingleLineChars = (screenWidth - initialX) / (charWidth * scale);
 
@@ -90,13 +87,14 @@ public:
 				y += charHeight * scale;
 			}
 
-			DrawCharacter(initialX + charWidth * mod * scale, y, str[elemNum], color);
+			drawCharacter(initialX + charWidth * mod * scale, y, str[elemNum], data, scale, color);
 		}
 
 		// Adjusting the blinker position
 		mod = str.size() % maxSingleLineChars;
-		if (!mod) y += charHeight * scale;
-
+		if (!mod) {
+			y += charHeight * scale;
+		}
 		blinkerPos = { initialX + uint32_t(charWidth * mod * scale), uint32_t(y)};
 	}
 
@@ -104,9 +102,6 @@ public:
 	// A temporary output file is used and then the contents are read and put into 
 	void ExecuteCommand(std::string sCommand){
 		sCommand += " > " + sTemporaryOutputFileName;
-		std::cout << "COMMAND: " << sCommand << std::endl;
-
-
 		std::system(sCommand.data());
 
 		// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
@@ -117,7 +112,7 @@ public:
 	}
 
 	// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
-	void FixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys) {
+	void fixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys) {
 		for (auto key : pressedKeys) {
 			addChar = key;	// Default
 
@@ -178,9 +173,7 @@ public:
 					if(c == '\n') history.push_back("");
 					else		  history.back() += c;
 				}
-				
 
-				// Initializing the next line
 				history.push_back(initText);
 				newChar = false;
 			}
@@ -198,15 +191,9 @@ public:
 		}
 	}
 
-	// Determines how many lines are can be shown on screen 
-	void UpdateLinesOnScreenCount(){
-		iLinesOnScreenCount =  ScreenHeight() / (charHeight * charScale); 
-	}
-
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
 		history.push_back(initText);
-		UpdateLinesOnScreenCount();
 
 		return true;
 	}
@@ -214,8 +201,6 @@ public:
 	// Called once per frame
 	bool OnUserUpdate(float fElapsedTime) override {
 		Clear(backColor);
-
-		std::cout << "history size: " << history.size() << std::endl;
 
 		// Getting keys	
 		pressedKeys     = GetAllPressedKeys();
@@ -245,27 +230,19 @@ public:
 				}
 				else										beginRenderPosY += num; 
 			}
-
-			UpdateLinesOnScreenCount();
 		}
 
-		// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
+		// Handling discrepencies between ASCII norm and what "GetAllKeys()" returns.
 		newChar = true;
-		if (pressedKeys.size() > 0) FixToASCII(addChar, pressedKeys);
+		if (pressedKeys.size() > 0) {
+			fixToASCII(addChar, pressedKeys);
+		}
 		
-		// Printing lines to screen
-		int iStartLineIndex = int(history.size()) - iLinesOnScreenCount;
-		if (iStartLineIndex < 0) iStartLineIndex = 0;
-		std::cout << "iStartLineIndex: " << iStartLineIndex << std::endl << std::endl;
+		// Printing whole history
+		// Drawing the whole String. If only one character needed, try "drawCharacter"
+		for (int i = 0; i < history.size(); i++) {
+			drawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1] - beginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, beginRenderPosY, charScale, olc::GREEN);
 
-		uint16_t iLastRowY = beginRenderPosY;
-		uint16_t iCount = 0;
-
-		for (int i = int(history.size()) - 1; i > iStartLineIndex; i--) {
-			// Drawing the whole String. If only one character needed, try "DrawCharacter"
-			// DrawString(initCharPosX, i ? blinkerPos[1] + charHeight * charScale : blinkerPos[1] - beginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, charScale, olc::GREEN);
-			DrawString(initCharPosX, iLastRowY - charHeight * charScale * iCount, history[i], font, blinkerPos, charScale, olc::GREEN);
-			iCount++;
 		}
 
 		// Blinking of last character
@@ -275,7 +252,7 @@ public:
 			timeCount -= maxTimeBlink;
 		}
 
-		if (drawBlinker) DrawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, olc::GREEN);
+		if (drawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], blinkChar, font, charScale, olc::GREEN);
 		
 		// Resetting stuff
 		blinkerPos = { initCharPosX, initCharPosY };
