@@ -12,29 +12,29 @@ private:
 	olc::Pixel backColor = {50, 50, 50, 255};
 
 	uint32_t iBaseCharPosX    = 10, iBaseCharPosY = 10;
-	uint32_t iInitCharPosX    = iBaseCharPosX, iInitCharPosY = iBaseCharPosY;	// Offset to begin drawing the first character
-	long     lBeginRenderPosY = 0;											// Rendering begins in this position. Changes when user scrolls
+	uint32_t iInitCharPosX    = iBaseCharPosX, iInitCharPosY = iBaseCharPosY; // Offset to begin drawing the first character
+	long     lBeginRenderPosY = 0;											  // Rendering begins in this position. Changes when user scrolls
 	
-	uint8_t  iCharWidth = 8, iCharHeight = 8;	 // The grid in which to draw the pixels
+	uint8_t  iCharWidth = 8, iCharHeight = 8;	  							  // The grid in which to draw the pixels
 	uint8_t  charac     = 0, iCharScale = 1;
-	uint8_t  iMinScale  = 1, iMaxScale = 10;	 // For zooming
+	uint8_t  iMinScale  = 1, iMaxScale = 10;	  							  // For zooming
 
 	// Keys
 	std::vector<uint8_t>     pressedKeys, heldKeys;
-	std::vector<std::string> history;										// Contains all the typed information. Every command is stored one position of this vector
-	std::string              bIinitText = "C:>", addChar;						// Constant initial text on screen
+	std::vector<std::string> history;										  // Contains all the typed information. Every command is stored one position of this vector
+	std::string              bIinitText = "C:>", addChar;					  // Constant initial text on screen
 	
 	bool 	  bShiftIsHeld  = false, bBackspaceIsHeld = false;
 	const int iInitTextSize = bIinitText.size();
 	bool      newChar = false;	
 
 	// Time and blinking
-	float   fTimeCount;														// Loops from 0 to fMaxTimeBlink
-	float   fMaxTimeBlink = 0.75;											// Intervals in which the blinking light turns on and off
-	uint8_t iBlinkChar = 3;													// Which char (based on ascii) to 
+	float   fTimeCount;														  // Loops from 0 to fMaxTimeBlink
+	float   fMaxTimeBlink = 0.75;											  // Intervals in which the blinking light turns on and off
+	uint8_t iBlinkChar = 3;													  // Which char (based on ascii) to 
 	bool    bDrawBlinker = true;
 
-	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };		// Position to draw the blinker
+	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };	  // Position to draw the blinker
 
 	// Commands to terminal
 	std::string sTemporaryOutputFileName = "output.terminalApp.text";
@@ -47,23 +47,22 @@ public:
 	}
 
 	// Draws a single character
-	void drawCharacter(int32_t x, int32_t y, uint8_t Char, std::vector<std::vector<uint8_t>>& data, unsigned int scale = 1,
-		olc::Pixel color = olc::RED) {
+	void drawCharacter(int32_t x, int32_t y, uint8_t Char, olc::Pixel color = olc::RED) {
 
 		uint8_t curPosX, curPosY;		// Positions inside the font matrix
 		int32_t screenX, screenY;		// Positions regarding the screen pixels
 
 		for (int hei = 0; hei < iCharHeight; hei++) {
 			curPosY = hei;
-			screenY = y + hei * scale;
+			screenY = y + hei * iCharScale;
 			for (int wid = 0; wid < iCharWidth; wid++) {
 				curPosX = wid;
-				screenX = x + wid * scale;
+				screenX = x + wid * iCharScale;
 
 				// https://stackoverflow.com/questions/2249731/how-do-i-get-bit-by-bit-data-from-an-integer-value-in-c
-				if ((data[Char][curPosY] & (1 << curPosX)) >> curPosX) {
-					for (int i = 0; i < scale; i++) {
-						for (int j = 0; j < scale; j++) {
+				if ((font[Char][curPosY] & (1 << curPosX)) >> curPosX) {
+					for (int i = 0; i < iCharScale; i++) {
+						for (int j = 0; j < iCharScale; j++) {
 							Draw(screenX + i, screenY + j, color);
 						}
 					}
@@ -73,29 +72,30 @@ public:
 	}
 
 	// Draws a full string. If screen width not enough, jumps to next line
-	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<std::vector<uint8_t>>& data, int screenWidth, std::vector<uint32_t>& blinkerPos, uint32_t lBeginRenderPosY, unsigned int scale = 1,
-		olc::Pixel color = olc::RED) {
+	void drawString(int32_t initialX, int32_t initialY, std::string str, std::vector<uint32_t>& blinkerPos, uint32_t lBeginRenderPosY, olc::Pixel color = olc::RED) {
+
+		int screenWidth = ScreenWidth();
 
 		int32_t y = initialY;
-		int maxSingleLineChars = (screenWidth - initialX) / (iCharWidth * scale);
+		int maxSingleLineChars = (screenWidth - initialX) / (iCharWidth * iCharScale);
 
 		int mod;
 		for (int elemNum = 0; elemNum < str.size(); elemNum++) {
 			// If screen space ends, jump to next line
 			mod = elemNum % maxSingleLineChars;
 			if (!mod && elemNum) {									
-				y += iCharHeight * scale;
+				y += iCharHeight * iCharScale;
 			}
 
-			drawCharacter(initialX + iCharWidth * mod * scale, y, str[elemNum], data, scale, color);
+			drawCharacter(initialX + iCharWidth * mod * iCharScale, y, str[elemNum], color);
 		}
 
 		// Adjusting the blinker position
 		mod = str.size() % maxSingleLineChars;
 		if (!mod) {
-			y += iCharHeight * scale;
+			y += iCharHeight * iCharScale;
 		}
-		blinkerPos = { initialX + uint32_t(iCharWidth * mod * scale), uint32_t(y)};
+		blinkerPos = { initialX + uint32_t(iCharWidth * mod * iCharScale), uint32_t(y)};
 	}
 
 	// Executes a command to the appropriate terminal
@@ -241,7 +241,12 @@ public:
 		// Printing whole history
 		// Drawing the whole String. If only one character needed, try "drawCharacter"
 		for (int i = 0; i < history.size(); i++) {
-			drawString(iInitCharPosX, i ? blinkerPos[1] + iCharHeight * iCharScale : blinkerPos[1] - lBeginRenderPosY, history[i], font, ScreenWidth(), blinkerPos, lBeginRenderPosY, iCharScale, olc::GREEN);
+			drawString(iInitCharPosX,
+			 		   i ? blinkerPos[1] + iCharHeight * iCharScale : blinkerPos[1] - lBeginRenderPosY,
+			 		   history[i],
+			 		   blinkerPos,
+			 		   lBeginRenderPosY,
+			 		   olc::GREEN);
 
 		}
 
@@ -252,7 +257,7 @@ public:
 			fTimeCount -= fMaxTimeBlink;
 		}
 
-		if (bDrawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], iBlinkChar, font, iCharScale, olc::GREEN);
+		if (bDrawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], iBlinkChar, olc::GREEN);
 		
 		// Resetting stuff
 		blinkerPos = { iInitCharPosX, iInitCharPosY };
