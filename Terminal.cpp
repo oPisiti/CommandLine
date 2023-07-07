@@ -9,6 +9,7 @@
 #include <iostream>
 #include "Font.h"
 #include <fstream>
+#include "KeysMap.h"
 #include "olcPixelGameEngine.h"
 #include <sstream>
 #include <vector>
@@ -30,9 +31,8 @@ private:
 	std::vector<std::string> history;										  // Contains all the typed information. Every command is stored one position of this vector
 	std::string              sUser = "", addChar;					  		  // Constant initial text on screen
 	std::string 		     sWorkingDir = "";
-	
-	bool 	  bShiftIsHeld  = false, bBackspaceIsHeld = false;
-	bool      bNewChar = false;	
+
+	bool bNewChar = false;	
 
 	// Time and blinking
 	float   fTimeCount;														  // Loops from 0 to fMaxTimeBlink
@@ -123,54 +123,73 @@ public:
 
 	// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
 	void fixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys) {
+
+		uint8_t iASCIIKey;
+
 		for (auto key : pressedKeys) {
-			addChar = key;	// Default
 
-			// olc::PixelGameEngine simply returns different positions for each character.
-			// For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
 
-			if (key >= 0 && key <= 26) {
-				addChar = key + 96;													// a-z
-				if (bShiftIsHeld) {													// SHIFT
-					addChar = key + 64;												// A-Z
-				}
+			// addChar = key;	// Default
 
-				// � held and no SHIFT	
-				if (std::find(heldKeys.begin(), heldKeys.end(), 91) != heldKeys.end()) {
-					switch (key) {
-					case 1:
-						addChar = 160;
-						break;
-					case 5:
-						addChar = 130;
-						break;
-					case 9:
-						addChar = 161;
-						break;
-					case 15:
-						addChar = 162;
-						break;
-					case 21:
-						addChar = 163;
-						break;
-					}
-				}
-			}
+			// Adjusting the key value
+			auto equivalent = valueInputKeys.find(key);
+			if(equivalent == valueInputKeys.end()) continue; 
 
-			else if (key >= 27 && key <= 36) {
-				addChar = key + 21;													// Numbers
-				if (bShiftIsHeld) {
-					addChar = key + 5;												// Special Number characters
-				}
-			}
+			if(isShiftHeld()) iASCIIKey = equivalent->second.upper;
+			else			  iASCIIKey = equivalent->second.lower;
 
-			else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
-			else if (key == 53)							addChar = key - 21;			// SPACE
-			else if (key == 63) {													// BACKSPACE
-				if (history.back().size() > GetFixText().length()) history.back().pop_back();
-				bNewChar = false;
-			}
-			else if (key == 66) {													// ENTER
+			// Most inputs will make a new char
+			bNewChar = true;
+
+			for(auto k: pressedKeys)
+				std::cout << "Key code: " << int(k) << ", iASCIIKey: " << iASCIIKey << std::endl;
+
+			// // olc::PixelGameEngine simply returns different positions for each character.
+			// // For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
+
+			// if (key >= 0 && key <= 26) {
+			// 	addChar = key + 96;													// a-z
+			// 	if (bShiftIsHeld) {													// SHIFT
+			// 		addChar = key + 64;												// A-Z
+			// 	}
+
+			// 	// � held and no SHIFT	
+			// 	if (std::find(heldKeys.begin(), heldKeys.end(), 91) != heldKeys.end()) {
+			// 		switch (key) {
+			// 		case 1:
+			// 			addChar = 160;
+			// 			break;
+			// 		case 5:
+			// 			addChar = 130;
+			// 			break;
+			// 		case 9:
+			// 			addChar = 161;
+			// 			break;
+			// 		case 15:
+			// 			addChar = 162;
+			// 			break;
+			// 		case 21:
+			// 			addChar = 163;
+			// 			break;
+			// 		}
+			// 	}
+			// }
+
+			// else if (key >= 27 && key <= 36) {
+			// 	addChar = key + 21;													// Numbers
+			// 	if (bShiftIsHeld) {
+			// 		addChar = key + 5;												// Special Number characters
+			// 	}
+			// }
+
+			// else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
+			// else if (key == 53)							addChar = key - 21;			// SPACE
+			// else if (key == 63) {													// BACKSPACE
+			// 	if (history.back().size() > GetFixText().length()) history.back().pop_back();
+			// 	bNewChar = false;
+			// }
+			if (key == 66) {													// ENTER
+
 				// Removing the initText
 				uint8_t iTrashLength = GetFixText().length();
 				std::string sOnlyCommand = history.back().substr(
@@ -191,9 +210,6 @@ public:
 				history.push_back(GetFixText());
 				bNewChar = false;
 			}
-			else if (key == 84)							addChar = key - 38;			// .
-			else if (key == 86)							addChar = key - 42;			// ,
-			else bNewChar = false;
 		}
 
 		if (bNewChar) {
@@ -201,7 +217,7 @@ public:
 			fTimeCount = 0.0f;
 
 			// The actual appending
-			history.back() += addChar;
+			history.back() += iASCIIKey;
 		}
 	}
 	
@@ -241,10 +257,10 @@ public:
 		Clear(backColor);
 
 		// Getting keys	
-		pressedKeys     = GetAllPressedKeys();
-		heldKeys        = GetAllHeldKeys();
-		bShiftIsHeld     = isShiftHeld();
-		bBackspaceIsHeld = isBackspaceHeld();
+		pressedKeys      = GetAllPressedKeys();
+		heldKeys         = GetAllHeldKeys();
+		// bShiftIsHeld     = isShiftHeld();
+		// bBackspaceIsHeld = isBackspaceHeld();
 
 		// Zooming - Each wheel tick equals 120 in value (??)
 		if (GetMouseWheel()) {			
