@@ -127,7 +127,7 @@ public:
 		uint8_t iASCIIKey;
 
 		for (auto key : pressedKeys) {
-			std::cout << "key: " << int(key)<< std::endl;
+			// Default value
 			iASCIIKey = 0;
 
 			// Adjusting the key value
@@ -145,52 +145,6 @@ public:
 			else{
 				bNewChar = false;
 			}
-
-
-			// std::cout << "iASCIIKey: " << int(iASCIIKey) << std::endl;
-
-			// // olc::PixelGameEngine simply returns different positions for each character.
-			// // For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
-
-			// if (key >= 0 && key <= 26) {
-			// 	addChar = key + 96;													// a-z
-			// 	if (bShiftIsHeld) {													// SHIFT
-			// 		addChar = key + 64;												// A-Z
-			// 	}
-
-			// 	// � held and no SHIFT	
-			// 	if (std::find(heldKeys.begin(), heldKeys.end(), 91) != heldKeys.end()) {
-			// 		switch (key) {
-			// 		case 1:
-			// 			addChar = 160;
-			// 			break;
-			// 		case 5:
-			// 			addChar = 130;
-			// 			break;
-			// 		case 9:
-			// 			addChar = 161;
-			// 			break;
-			// 		case 15:
-			// 			addChar = 162;
-			// 			break;
-			// 		case 21:
-			// 			addChar = 163;
-			// 			break;
-			// 		}
-			// 	}
-			// }
-
-			// else if (key >= 27 && key <= 36) {
-			// 	addChar = key + 21;													// Numbers
-			// 	if (bShiftIsHeld) {
-			// 		addChar = key + 5;												// Special Number characters
-			// 	}
-			// }
-
-			// else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
-			// else if (key == 53)							addChar = key - 21;			// SPACE
-			
-
 
 			// ENTER
 			if (key == 66) {													
