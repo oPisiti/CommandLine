@@ -127,22 +127,27 @@ public:
 		uint8_t iASCIIKey;
 
 		for (auto key : pressedKeys) {
-
-
-			// addChar = key;	// Default
+			std::cout << "key: " << int(key)<< std::endl;
+			iASCIIKey = 0;
 
 			// Adjusting the key value
 			auto equivalent = valueInputKeys.find(key);
-			if(equivalent == valueInputKeys.end()) continue; 
+			
+			// Key found
+			if(equivalent != valueInputKeys.end()){
+				if(isShiftHeld()) iASCIIKey = equivalent->second.upper;
+				else			  iASCIIKey = equivalent->second.lower;
 
-			if(isShiftHeld()) iASCIIKey = equivalent->second.upper;
-			else			  iASCIIKey = equivalent->second.lower;
+				// Printable/supported char
+				bNewChar = true;
+			}
+			// Key not found -> Not a printable/supported char
+			else{
+				bNewChar = false;
+			}
 
-			// Most inputs will make a new char
-			bNewChar = true;
 
-			for(auto k: pressedKeys)
-				std::cout << "Key code: " << int(k) << ", iASCIIKey: " << iASCIIKey << std::endl;
+			// std::cout << "iASCIIKey: " << int(iASCIIKey) << std::endl;
 
 			// // olc::PixelGameEngine simply returns different positions for each character.
 			// // For example, "a" is the first position, not position 97, or 0x61. See https://www.asciitable.com/ for more
@@ -188,7 +193,10 @@ public:
 			// 	if (history.back().size() > GetFixText().length()) history.back().pop_back();
 			// 	bNewChar = false;
 			// }
-			if (key == 66) {													// ENTER
+
+
+			// ENTER
+			if (key == 66) {													
 
 				// Removing the initText
 				uint8_t iTrashLength = GetFixText().length();
