@@ -189,10 +189,7 @@ public:
 
 			// else if (key >= 69 && key <= 78)			addChar = key - 21;			// Numbers on Numpad
 			// else if (key == 53)							addChar = key - 21;			// SPACE
-			// else if (key == 63) {													// BACKSPACE
-			// 	if (history.back().size() > GetFixText().length()) history.back().pop_back();
-			// 	bNewChar = false;
-			// }
+			
 
 
 			// ENTER
@@ -218,6 +215,13 @@ public:
 				history.push_back(GetFixText());
 				bNewChar = false;
 			}
+
+			// BACKSPACE
+			else if (key == 63) {													
+				if (history.back().size() > GetFixText().length()) history.back().pop_back();
+				bNewChar = false;
+			}
+
 		}
 
 		if (bNewChar) {
