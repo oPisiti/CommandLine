@@ -7,6 +7,8 @@ struct UpperLowerKeys{
     uint8_t upper;
 };
 
+// Each line is structured in the following way:
+// {OLCCodeInput, {ASCIICodeLowerCase, ASCIICodeUpperCase}}
 extern std::unordered_map<uint8_t, UpperLowerKeys> valueInputKeys = {
 	{1,  {0x61, 0x41}},
 	{2,  {0x62, 0x42}},

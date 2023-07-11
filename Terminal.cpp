@@ -1,9 +1,10 @@
 #define OLC_PGE_APPLICATION
 
 #ifdef _WIN32
-#define OS_WINDOWS true
+#define WINDOWS_OS true
+#include <cstdint>
 #else
-#define OS_WINDOWS false
+#define WINDOWS_OS false
 #endif
 
 #include <iostream>
@@ -195,7 +196,7 @@ public:
 
 	// Updates the variable sUser
 	void UpdateUserString(){
-		if(OS_WINDOWS) ExecuteCommand("echo %\\USERNAME%");
+		if(WINDOWS_OS) ExecuteCommand("echo %username%");
 		else 		   ExecuteCommand("whoami");
 
 		sUser = sTerminalOutput.substr(0, sTerminalOutput.length() - 1);
@@ -203,7 +204,7 @@ public:
 
 	// Updates the variable sWorkingDir
 	void UpdateWorkingDirString(){
-		if(OS_WINDOWS) ExecuteCommand("cd");
+		if(WINDOWS_OS ) ExecuteCommand("cd");
 		else 		   ExecuteCommand("pwd");
 
 		sWorkingDir = sTerminalOutput.substr(0, sTerminalOutput.length() - 1) + ": ";
