@@ -30,6 +30,7 @@ private:
 	// Keys
 	std::vector<uint8_t>     pressedKeys, heldKeys;
 	std::vector<std::string> history;										  // Contains all the typed information. Every command is stored one position of this vector
+	std::vector<std::string> sCommandsHistory;								  // Contains only the valid issued commands
 	std::string              sUser = "", addChar;					  		  // Constant initial text on screen
 	std::string 		     sWorkingDir = "";
 
@@ -46,6 +47,9 @@ private:
 	// Commands to terminal
 	std::string sTemporaryOutputFileName = ".output.terminalApp.text";
 	std::string sTerminalOutput = "";
+
+	// Accessing history
+	int16_t iRelativeCommandsHistoryIndex = 0;								  // Which commands history index to show when up or down arrow is pressed. Relative to the last element
 
 public:
 
@@ -123,7 +127,7 @@ public:
 	}
 
 	// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
-	void fixToASCII(std::string& addChar, const std::vector<uint8_t>& pressedKeys) {
+	void HandleKeyPress(std::string& addChar, const std::vector<uint8_t>& pressedKeys) {
 
 		uint8_t iASCIIKey;
 
@@ -141,11 +145,11 @@ public:
 
 				// Printable/supported char
 				bNewChar = true;
+				continue;
 			}
+
 			// Key not found -> Not a printable/supported char
-			else{
-				bNewChar = false;
-			}
+			bNewChar = false;
 
 			// ENTER
 			if (key == 66) {													
@@ -168,6 +172,11 @@ public:
 				UpdateWorkingDirString();
 
 				history.push_back(GetFixText());
+
+				// Dealing with the specific commands history vector
+				sCommandsHistory.push_back(sOnlyCommand);
+				iRelativeCommandsHistoryIndex = 0;
+
 				bNewChar = false;
 			}
 
@@ -175,6 +184,21 @@ public:
 			else if (key == 63) {													
 				if (history.back().size() > GetFixText().length()) history.back().pop_back();
 				bNewChar = false;
+			}
+
+			// ARROW KEYS
+			else if((key == 49 || key == 50) && history.size() > 1){
+
+				// UP ARROW
+				if(key == 49 && -iRelativeCommandsHistoryIndex < sCommandsHistory.size())
+					iRelativeCommandsHistoryIndex -= 1;
+
+				// DOWN ARROW
+				else if(key == 50 && iRelativeCommandsHistoryIndex <  0)
+					iRelativeCommandsHistoryIndex += 1;	
+
+				if(iRelativeCommandsHistoryIndex == 0) history.back() = GetFixText();
+				else history.back() = GetFixText() + sCommandsHistory[sCommandsHistory.size() + iRelativeCommandsHistoryIndex];
 			}
 
 		}
@@ -256,7 +280,7 @@ public:
 		// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
 		bNewChar = true;
 		if (pressedKeys.size() > 0) {
-			fixToASCII(addChar, pressedKeys);
+			HandleKeyPress(addChar, pressedKeys);
 		}
 		
 		// Printing whole history
