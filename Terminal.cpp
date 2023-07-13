@@ -8,6 +8,7 @@
 #endif
 
 #include <iostream>
+#include <filesystem>
 #include "Font.h"
 #include <fstream>
 #include "KeysMap.h"
@@ -45,11 +46,17 @@ private:
 	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };	  // Position to draw the blinker
 
 	// Commands to terminal
-	std::string sTemporaryOutputFileName = ".output.terminalApp.text";
-	std::string sTerminalOutput = "";
+	std::string sTmpOutputFileName   = ".output.tmp";
+	std::string sTerminalOutput      = "";
+	std::string sTmpUsernameFileName = ".username.tmp";
+	std::string sTmpCurrDirFileName  = ".currdir.tmp";
 
 	// Accessing history
 	int16_t iRelativeCommandsHistoryIndex = 0;								  // Which commands history index to show when up or down arrow is pressed. Relative to the last element
+
+	// IO monitoring
+	std::filesystem::file_time_type fLastModifiedTime, fCurrModifiedTime; 
+
 
 public:
 
@@ -115,15 +122,21 @@ public:
 
 	// Executes a command to the appropriate terminal
 	// A temporary output file is used and then the contents are read and put into 
-	void ExecuteCommand(std::string sCommand){
-		sCommand += " > " + sTemporaryOutputFileName + " 2>&1";
+	void ExecuteCommand(std::string sCommand, std::string sOutputFile){
+		sCommand += " > " + sOutputFile + " 2>&1";
 		std::system(sCommand.data());
 
 		// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
 		std::stringstream buffer; 
-		buffer << std::ifstream(sTemporaryOutputFileName).rdbuf();
+		buffer << std::ifstream(sOutputFile).rdbuf();
 
 		sTerminalOutput = buffer.str();
+
+		fCurrModifiedTime = std::filesystem::last_write_time(sTmpOutputFileName);
+		if(fCurrModifiedTime > fLastModifiedTime){
+			fLastModifiedTime = fCurrModifiedTime;
+			std::cout << "New File!" << std::endl;
+		}
 	}
 
 	// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
@@ -161,7 +174,7 @@ public:
 										    history.back().length() - iTrashLength);
 				
 				// Executing the command and showing output
-				ExecuteCommand(sOnlyCommand);
+				ExecuteCommand(sOnlyCommand, sTmpOutputFileName);
 				history.push_back("");
 				for(auto c: sTerminalOutput){
 					if(c == '\n') history.push_back("");
@@ -220,25 +233,40 @@ public:
 
 	// Updates the variable sUser
 	void UpdateUserString(){
-		if(WINDOWS_OS) ExecuteCommand("echo %username%");
-		else 		   ExecuteCommand("whoami");
+		std::string command;
+
+		if(WINDOWS_OS) command = "echo %username%";
+		else 		   command = "whoami";
+
+		ExecuteCommand(command, sTmpUsernameFileName);
 
 		sUser = sTerminalOutput.substr(0, sTerminalOutput.length() - 1);
 	}
 
 	// Updates the variable sWorkingDir
 	void UpdateWorkingDirString(){
-		if(WINDOWS_OS ) ExecuteCommand("cd");
-		else 		   ExecuteCommand("pwd");
+		std::string command;
+
+		if(WINDOWS_OS ) command = "cd";
+		else 		    command = "pwd";
+
+		ExecuteCommand(command, sTmpCurrDirFileName);
 
 		sWorkingDir = sTerminalOutput.substr(0, sTerminalOutput.length() - 1) + ": ";
 	}
 
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
+		// Creating the temp file
+		ExecuteCommand(">" + sTmpOutputFileName, sTmpOutputFileName);
+
 		UpdateUserString();
 		UpdateWorkingDirString();
 		history.push_back(GetFixText());
+
+		// Getting the last modified time
+		fLastModifiedTime = std::filesystem::last_write_time(sTmpOutputFileName);
+		fCurrModifiedTime = fLastModifiedTime;
 
 		return true;
 	}
