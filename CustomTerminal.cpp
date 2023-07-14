@@ -7,14 +7,16 @@
 #define WINDOWS_OS false
 #endif
 
-#include <iostream>
+#include <chrono>
 #include <filesystem>
 #include "Font.h"
 #include <fstream>
 #include "KeysMap.h"
 #include "olcPixelGameEngine.h"
 #include <sstream>
+#include <thread>
 #include <vector>
+
 
 class MyText : public olc::PixelGameEngine {
 private:
@@ -50,18 +52,24 @@ private:
 	std::string sTerminalOutput      = "";
 	std::string sTmpUsernameFileName = ".username.tmp";
 	std::string sTmpCurrDirFileName  = ".currdir.tmp";
+	std::string sOnlyCommand;
 
 	// Accessing history
 	int16_t iRelativeCommandsHistoryIndex = 0;								  // Which commands history index to show when up or down arrow is pressed. Relative to the last element
 
 	// IO monitoring
-	std::filesystem::file_time_type fLastModifiedTime, fCurrModifiedTime; 
+	std::filesystem::file_time_type fLastModifiedTime, fCurrModifiedTime;
+	std::thread tMonitorStdout, tExecuteCommand; 
 
 
 public:
 
 	MyText() {
 		sAppName = "Custom Terminal";
+	}
+
+	~MyText(){
+		tMonitorStdout.join();
 	}
 
 	// Draws a single character
@@ -122,7 +130,10 @@ public:
 
 	// Executes a command to the appropriate terminal
 	// A temporary output file is used and then the contents are read and put into 
-	void ExecuteCommand(std::string sCommand, std::string sOutputFile){
+	void ExecuteCommand(std::string sCommand, std::string sOutputFile, std::string& sOutputString){
+		std::cout << "sCommand: " << sCommand << std::endl;
+		std::cout << "sOutputFile: " << sOutputFile << std::endl;
+
 		sCommand += " > " + sOutputFile + " 2>&1";
 		std::system(sCommand.data());
 
@@ -130,13 +141,13 @@ public:
 		std::stringstream buffer; 
 		buffer << std::ifstream(sOutputFile).rdbuf();
 
-		sTerminalOutput = buffer.str();
+		sOutputString = buffer.str();
+	}
 
-		fCurrModifiedTime = std::filesystem::last_write_time(sTmpOutputFileName);
-		if(fCurrModifiedTime > fLastModifiedTime){
-			fLastModifiedTime = fCurrModifiedTime;
-			std::cout << "New File!" << std::endl;
-		}
+	// Returns the fix part of every new command line
+	std::string GetFixText(){
+		std::string ans = sUser + "@" + sWorkingDir ;
+		return ans;
 	}
 
 	// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
@@ -169,26 +180,20 @@ public:
 
 				// Removing the initText
 				uint8_t iTrashLength = GetFixText().length();
-				std::string sOnlyCommand = history.back().substr(
+				sOnlyCommand = history.back().substr(
 										    iTrashLength, 
 										    history.back().length() - iTrashLength);
 				
 				// Executing the command and showing output
-				ExecuteCommand(sOnlyCommand, sTmpOutputFileName);
-				history.push_back("");
-				for(auto c: sTerminalOutput){
-					if(c == '\n') history.push_back("");
-					else		  history.back() += c;
-				}
+				tExecuteCommand = std::thread(&MyText::ExecuteCommand,
+									 		  this,
+				 							  std::ref(sOnlyCommand),
+				 							  std::ref(sTmpOutputFileName),
+											  std::ref(sTerminalOutput));
 
-				// User may have used a command that changes directory
-				UpdateWorkingDirString();
+				// tExecuteCommand.join();
 
-				history.push_back(GetFixText());
-
-				// Dealing with the specific commands history vector
-				sCommandsHistory.push_back(sOnlyCommand);
-				iRelativeCommandsHistoryIndex = 0;
+				
 
 				bNewChar = false;
 			}
@@ -224,12 +229,67 @@ public:
 			history.back() += iASCIIKey;
 		}
 	}
-	
-	// Returns the fix part of every new command line
-	std::string GetFixText(){
-		std::string ans = sUser + "@" + sWorkingDir ;
-		return ans;
+
+	// Monitors stdout file for changes
+	void MonitorStdout(){
+		std::string sCurrTerminalOutput, sNewData;
+		int iIndexStringDiffer;
+
+		while(true){
+			std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+			fCurrModifiedTime = std::filesystem::last_write_time(sTmpOutputFileName);
+
+			// Something was written to stdout
+			if(fCurrModifiedTime > fLastModifiedTime){
+				// --- Comparing stdout' current version to sTerminalOutput ---
+				sCurrTerminalOutput = sTerminalOutput;
+
+				// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
+				std::stringstream buffer; 
+				buffer << std::ifstream(sTmpOutputFileName).rdbuf();
+				sTerminalOutput = buffer.str();
+
+				iIndexStringDiffer = sCurrTerminalOutput.compare(sTerminalOutput);
+
+				std::cout << "iIndexStringDiffer: " << iIndexStringDiffer << std::endl;
+				
+				// There has been an update on stdout file
+				if(iIndexStringDiffer > 0) {
+					sNewData = sTerminalOutput.substr(iIndexStringDiffer);
+				}
+				else					   continue;
+
+				// history.push_back("");
+				for(auto c: sNewData){
+					if(c == '\n') history.push_back("");
+					else		  history.back() += c;
+				}
+
+				// User may have used a command that changes directory
+				UpdateWorkingDirString();
+
+				history.push_back(GetFixText());
+
+				// Dealing with the specific commands history vector
+				sCommandsHistory.push_back(sOnlyCommand);
+				iRelativeCommandsHistoryIndex = 0;
+
+				fLastModifiedTime = fCurrModifiedTime;
+				std::cout << "New File!" << std::endl;
+			}
+
+		}
 	}
+
+	// // Reads the contents of a file and updates a string with it
+	// void UpdateStringWithFile(std::string sOutputFile, std::string& sUpdate){
+	// 	// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
+	// 	std::stringstream buffer; 
+	// 	buffer << std::ifstream(sOutputFile).rdbuf();
+
+	// 	sUpdate = buffer.str();
+	// }
 
 	// Updates the variable sUser
 	void UpdateUserString(){
@@ -238,9 +298,9 @@ public:
 		if(WINDOWS_OS) command = "echo %username%";
 		else 		   command = "whoami";
 
-		ExecuteCommand(command, sTmpUsernameFileName);
+		ExecuteCommand(command, sTmpUsernameFileName, sUser);
 
-		sUser = sTerminalOutput.substr(0, sTerminalOutput.length() - 1);
+		sUser = sUser.substr(0, sUser.length() - 1);
 	}
 
 	// Updates the variable sWorkingDir
@@ -250,15 +310,16 @@ public:
 		if(WINDOWS_OS ) command = "cd";
 		else 		    command = "pwd";
 
-		ExecuteCommand(command, sTmpCurrDirFileName);
+		ExecuteCommand(command, sTmpCurrDirFileName, sWorkingDir);
 
-		sWorkingDir = sTerminalOutput.substr(0, sTerminalOutput.length() - 1) + ": ";
+		sWorkingDir = sWorkingDir.substr(0, sWorkingDir.length() - 1) + ": ";
 	}
 
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
 		// Creating the temp file
-		ExecuteCommand(">" + sTmpOutputFileName, sTmpOutputFileName);
+		std::string sUseless;
+		ExecuteCommand(">" + sTmpOutputFileName, sTmpOutputFileName, sUseless);
 
 		UpdateUserString();
 		UpdateWorkingDirString();
@@ -267,6 +328,8 @@ public:
 		// Getting the last modified time
 		fLastModifiedTime = std::filesystem::last_write_time(sTmpOutputFileName);
 		fCurrModifiedTime = fLastModifiedTime;
+
+		tMonitorStdout = std::thread(&MyText::MonitorStdout, this);
 
 		return true;
 	}
@@ -335,15 +398,15 @@ public:
 		
 		// Resetting stuff
 		blinkerPos = { iInitCharPosX, iInitCharPosY };
+
 		return true;
 	}
 };
-
-
+ 
 int main(){
 	MyText myText;
 	if (myText.Construct(600, 500, 2, 2))
 		myText.Start();
-
+	
 	return 0;
 }
