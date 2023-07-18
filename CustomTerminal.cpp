@@ -186,42 +186,41 @@ public:
 
 			// ENTER
 			if (key == 66) {		
-				// If a thread is called a second time without beeing joined, the program crashes		
-				std::cout << "bUserCommandBeingExecuted: " << bUserCommandBeingExecuted << std::endl;
+				// Removing the initText
+				// uint8_t iTrashLength = GetFixText().length();
+				// sOnlyCommand = history.back().substr(
+				// 						    iTrashLength, 
+				// 						    history.back().length() - iTrashLength);
+				
+				// Executing the command and showing output				
 				if(bUserCommandBeingExecuted){
-					std::cout << history.back() + "\x0D" << std::endl;
-					bNewChar = false;
-					break;
+					std::cout << history.back() + "\x0D";
+				}				
+				else{
+					// If a thread is called a second time without beeing joined	, the program crashes		
+					if(tExecuteCommand.joinable()) tExecuteCommand.join();			
+					tExecuteCommand = std::thread(&MyText::ExecuteCommand,
+												  this,
+												  sOnlyCommand,
+												  std::ref(sTmpOutputFileName),
+												  std::ref(sTerminalOutput),
+												  true);
 				}
 
-				if(tExecuteCommand.joinable()) tExecuteCommand.join();		
+				// Dealing with the specific commands history vector
+				sCommandsHistory.push_back(sOnlyCommand);
+				sOnlyCommand.clear();
 
-				// Removing the initText
-				uint8_t iTrashLength = GetFixText().length();
-				sOnlyCommand = history.back().substr(
-										    iTrashLength, 
-										    history.back().length() - iTrashLength);
-				
-				// Executing the command and showing output
-				// std::cout << "JUST BEFORE CALL" << std::endl;
-				bUserCommandBeingExecuted = true;
-
-				tExecuteCommand = std::thread(&MyText::ExecuteCommand,
-									 		  this,
-				 							  std::ref(sOnlyCommand),
-				 							  std::ref(sTmpOutputFileName),
-											  std::ref(sTerminalOutput),
-											  true);
-
-				bUserCommandBeingExecuted = false;
-
-
-				return;
+				bNewChar = false;
 			}
 
 			// BACKSPACE
 			else if (key == 63) {													
-				if (history.back().size() > GetFixText().length()) history.back().pop_back();
+				// if (history.back().size() > GetFixText().length()) history.back().pop_back();
+				if (sOnlyCommand.size() > 0){
+					history.back().pop_back();
+					sOnlyCommand.pop_back();
+				}
 				bNewChar = false;
 			}
 
@@ -248,6 +247,7 @@ public:
 
 			// The actual appending
 			history.back() += iASCIIKey;
+			sOnlyCommand   += iASCIIKey;
 		}
 	}
 
@@ -290,10 +290,7 @@ public:
 		history.push_back(GetFixText());
 
 		// Dealing with the specific commands history vector
-		sCommandsHistory.push_back(sOnlyCommand);
 		iRelativeCommandsHistoryIndex = 0;
-
-		fLastModifiedTime = fCurrModifiedTime;
 	}
 
 
