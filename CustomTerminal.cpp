@@ -18,6 +18,19 @@
 #include <vector>
 
 
+// Returns the index in which the strings differ
+// Returns -1 if equal
+int CompareStrings(std::string sA, std::string sB){
+	int iSmallestSize = sA.size() > sB.size() ? sB.size() : sA.size();
+
+	for(int i = 0; i < iSmallestSize; i++){
+		if(sA[i] != sB[i]) return i;
+	}
+
+	return -1;
+}
+
+
 class MyText : public olc::PixelGameEngine {
 private:
 	olc::Pixel backColor = {50, 50, 50, 255};
@@ -53,7 +66,7 @@ private:
 	std::string sTmpUsernameFileName = ".username.tmp";
 	std::string sTmpCurrDirFileName  = ".currdir.tmp";
 	std::string sOnlyCommand;
-	bool bUserCommandBeingExecuted		 = false;
+	bool bUserCommandBeingExecuted   = false;
 
 	// Accessing history
 	int16_t iRelativeCommandsHistoryIndex = 0;								  // Which commands history index to show when up or down arrow is pressed. Relative to the last element
@@ -216,7 +229,6 @@ public:
 
 			// BACKSPACE
 			else if (key == 63) {													
-				// if (history.back().size() > GetFixText().length()) history.back().pop_back();
 				if (sOnlyCommand.size() > 0){
 					history.back().pop_back();
 					sOnlyCommand.pop_back();
@@ -235,8 +247,13 @@ public:
 				else if(key == 50 && iRelativeCommandsHistoryIndex <  0)
 					iRelativeCommandsHistoryIndex += 1;	
 
-				if(iRelativeCommandsHistoryIndex == 0) history.back() = GetFixText();
-				else history.back() = GetFixText() + sCommandsHistory[sCommandsHistory.size() + iRelativeCommandsHistoryIndex];
+				// Action
+				if(iRelativeCommandsHistoryIndex == 0) 
+					history.back() = GetFixText();
+				else {
+					sOnlyCommand = sCommandsHistory[sCommandsHistory.size() + iRelativeCommandsHistoryIndex];
+					history.back() = GetFixText() + sOnlyCommand;
+				}
 			}
 
 		}
@@ -253,27 +270,30 @@ public:
 
 	// Handles new ouput in "sTmpOutputFileName" file
 	void HandleNewOuput(){
-		std::string sCurrTerminalOutput, sNewData;
+		std::string sOldTerminalOutput, sNewData;
 		int iIndexStringDiffer;
 
 		// --- Comparing stdout' current version to sTerminalOutput ---
-		sCurrTerminalOutput = sTerminalOutput;
+		sOldTerminalOutput = sTerminalOutput;
 
 		FileToVariable(sTmpOutputFileName, sTerminalOutput);
 
-		//--- Adding only the difference in strings ---
-		iIndexStringDiffer = sCurrTerminalOutput.compare(sTerminalOutput);
+		iIndexStringDiffer = CompareStrings(sTerminalOutput, sOldTerminalOutput);
 
-		// Index == 0 means the same output.
-		// In this case, the last command must have been the same as the previous
-		if(iIndexStringDiffer == 0) sNewData = sTerminalOutput;
-		else{
-			if(sTerminalOutput.size() < sCurrTerminalOutput.size()){ 
-									sNewData = sTerminalOutput;
+		//--- Adding only the difference in strings ---		
+		if(iIndexStringDiffer == -1){    								// Strings are equal
+			    sNewData = sTerminalOutput;		
+		}		
+		else{ 						     								// Unequal strings
+			if(sTerminalOutput.size() > sOldTerminalOutput.size()){
+				sNewData = sTerminalOutput.substr(iIndexStringDiffer);
 			}
-			else					sNewData = sTerminalOutput.substr(sCurrTerminalOutput.size());
+			else{
+				sNewData = sTerminalOutput;
+			}
 		}
-			
+
+
 		history.push_back("");
 		for(auto c: sNewData){
 			if(c == '\n') history.push_back("");
@@ -292,7 +312,6 @@ public:
 		// Dealing with the specific commands history vector
 		iRelativeCommandsHistoryIndex = 0;
 	}
-
 
 	// Monitors stdout file for changes
 	void MonitorStdout(){
