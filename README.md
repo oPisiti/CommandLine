@@ -1,3 +1,8 @@
+# Supports
+- Simple one line commands
+- Piping
+- Stream redirection
+
 # Usage
 
 ## Windows

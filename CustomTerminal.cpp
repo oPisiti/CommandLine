@@ -150,7 +150,8 @@ public:
 						std::string& sOutputString,
 						bool bMonitorExecution = false){
 
-		sCommand += " > " + sOutputFile + " 2>&1";
+		sCommand = "(" + sCommand + ")" " > " + sOutputFile + " 2>&1";
+
 
 		if(bMonitorExecution) bUserCommandBeingExecuted = true;
 		std::system(sCommand.data());
