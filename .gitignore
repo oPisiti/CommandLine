@@ -34,5 +34,4 @@
 # Custom Executable
 Terminal
 CustomTerminal
-.output.terminalApp.text
-*.exe
+*.tmp
