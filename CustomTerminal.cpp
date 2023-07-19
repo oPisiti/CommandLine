@@ -20,7 +20,9 @@
 
 class MyText : public olc::PixelGameEngine {
 private:
-	olc::Pixel backColor = {50, 50, 50, 255};
+	// Rendering
+	const olc::Pixel olcPBackColor = {50, 50, 50, 255};
+	const olc::Pixel olcPFontColor = olc::MAGENTA;
 
 	uint32_t iBaseCharPosX    = 10, iBaseCharPosY = 10;
 	uint32_t iInitCharPosX    = iBaseCharPosX, iInitCharPosY = iBaseCharPosY; // Offset to begin drawing the first character
@@ -48,11 +50,11 @@ private:
 	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };	  // Position to draw the blinker
 
 	// Commands to terminal
-	std::string sTmpOutputFileName   = ".output.tmp";
-	std::string sTerminalOutput      = "";
-	std::string sTmpUsernameFileName = ".username.tmp";
-	std::string sTmpCurrDirFileName  = ".currdir.tmp";
-	std::string sOnlyCommand;
+	const std::string sTmpOutputFileName   = ".output.tmp";
+	const std::string sTmpUsernameFileName = ".username.tmp";
+	const std::string sTmpCurrDirFileName  = ".currdir.tmp";
+		  std::string sTerminalOutput      = "";
+		  std::string sOnlyCommand;
 
 	// Accessing history
 	int16_t iRelativeCommandsHistoryIndex = 0;								  // Which commands history index to show when up or down arrow is pressed. Relative to the last element
@@ -355,7 +357,7 @@ public:
 
 	// Called once per frame
 	bool OnUserUpdate(float fElapsedTime) override {
-		Clear(backColor);
+		Clear(olcPBackColor);
 
 		// Getting keys	
 		pressedKeys      = GetAllPressedKeys();
@@ -402,7 +404,7 @@ public:
 			 		   history[i],
 			 		   blinkerPos,
 			 		   iBeginRenderPosY,
-			 		   olc::GREEN);
+			 		   olcPFontColor);
 
 		}
 
@@ -413,7 +415,7 @@ public:
 			fTimeCount -= fMaxTimeBlink;
 		}
 
-		if (bDrawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], iBlinkChar, olc::GREEN);
+		if (bDrawBlinker) drawCharacter(blinkerPos[0], blinkerPos[1], iBlinkChar, olcPFontColor);
 		
 		// Resetting stuff
 		blinkerPos = { iInitCharPosX, iInitCharPosY };
