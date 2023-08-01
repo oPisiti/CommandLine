@@ -1,12 +1,5 @@
 #define OLC_PGE_APPLICATION
 
-#ifdef _WIN32
-#define WINDOWS_OS true
-#include <cstdint>
-#else
-#define WINDOWS_OS false
-#endif
-
 #include <chrono>
 #include <filesystem>
 #include "Font.h"
@@ -16,6 +9,15 @@
 #include <sstream>
 #include <thread>
 #include <vector>
+
+#ifdef _WIN32
+#define WINDOWS_OS true
+const std::string CURR_DIR_COMMAND = "cd";
+#include <cstdint>
+#else
+#define WINDOWS_OS false
+const std::string CURR_DIR_COMMAND = "pwd";
+#endif
 
 
 class MyText : public olc::PixelGameEngine {
@@ -138,7 +140,11 @@ public:
 		std::cout << "sCommand: " << sCommand << std::endl;
 		std::cout << "sOutputFile: " << sOutputFile << std::endl;
 
-		sCommand += " > " + sOutputFile + " 2>&1";
+		sCommand = "cd '" + sWorkingDir + "' && (" + sCommand + ") > " + sOutputFile + " 2>&1";
+		sCommand += " && " + CURR_DIR_COMMAND + " > " + sTmpCurrDirFileName;
+
+		std::cout << "FINAL COMMAND: " << sCommand << std::endl;
+
 		std::system(sCommand.data());
 
 		// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
@@ -151,7 +157,7 @@ public:
 
 	// Returns the fix part of every new command line
 	std::string GetFixText(){
-		std::string ans = sUser + "@" + sWorkingDir ;
+		std::string ans = sUser + "@" + sWorkingDir + ": ";
 		return ans;
 	}
 
@@ -272,7 +278,7 @@ public:
 		}
 
 		// User may have used a command that changes directory
-		UpdateWorkingDirString();
+		// UpdateWorkingDirString();
 
 		history.push_back(GetFixText());
 
@@ -303,14 +309,6 @@ public:
 		}
 	}
 
-	// // Reads the contents of a file and updates a string with it
-	// void UpdateStringWithFile(std::string sOutputFile, std::string& sUpdate){
-	// 	// As reading a file (with rdbuf()) returns a stream, this intermediary step is required
-	// 	std::stringstream buffer; 
-	// 	buffer << std::ifstream(sOutputFile).rdbuf();
-
-	// 	sUpdate = buffer.str();
-	// }
 
 	// Updates the variable sUser
 	void UpdateUserString(){
@@ -328,12 +326,12 @@ public:
 	void UpdateWorkingDirString(){
 		std::string command;
 
-		if(WINDOWS_OS ) command = "cd";
-		else 		    command = "pwd";
+		if(WINDOWS_OS) command = "cd";
+		else 		   command = "pwd";
 
 		ExecuteCommand(command, sTmpCurrDirFileName, sWorkingDir);
 
-		sWorkingDir = sWorkingDir.substr(0, sWorkingDir.length() - 1) + ": ";
+		sWorkingDir = sWorkingDir.substr(0, sWorkingDir.length() - 1);
 	}
 
 	// Called once at the start, so create things here
