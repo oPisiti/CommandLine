@@ -12,11 +12,13 @@
 
 #ifdef _WIN32
 #define WINDOWS_OS true
-const std::string CURR_DIR_COMMAND = "cd";
+const std::string CURR_DIR_COMMAND  = "cd";
+const std::string CURR_USER_COMMAND = "echo %username%";
 #include <cstdint>
 #else
 #define WINDOWS_OS false
-const std::string CURR_DIR_COMMAND = "pwd";
+const std::string CURR_DIR_COMMAND  = "pwd";
+const std::string CURR_USER_COMMAND = "whoami";
 #endif
 
 
@@ -65,12 +67,12 @@ private:
 	std::vector<uint32_t> blinkerPos = { iInitCharPosX, iInitCharPosY };	  // Position to draw the blinker
 
 	// Commands to terminal
-	std::string sTmpOutputFileName   = ".output.tmp";
-	std::string sTerminalOutput      = "";
-	std::string sTmpUsernameFileName = ".username.tmp";
-	std::string sTmpCurrDirFileName  = ".currdir.tmp";
+	std::string sTmpOutputFileName      = ".output.tmp";
+	std::string sTerminalOutput         = "";
+	std::string sTmpUsernameFileName    = ".username.tmp";
+	std::string sTmpWorkingDirFileName  = ".currdir.tmp";
 	std::string sOnlyCommand;
-	bool bUserCommandBeingExecuted   = false;
+	bool bUserCommandBeingExecuted      = false;
 
 	// Accessing history
 	int16_t iRelativeCommandsHistoryIndex = 0;								  // Which commands history index to show when up or down arrow is pressed. Relative to the last element
@@ -153,17 +155,17 @@ public:
 						std::string sOutputFile,
 						std::string& sOutputString,
 						bool bMonitorExecution = false){
-
-		sCommand = "(" + sCommand + ")" " > " + sOutputFile + " 2>&1";
-
-
+		
+		// Signaling the start of execution for the monitoring thread
 		if(bMonitorExecution) bUserCommandBeingExecuted = true;
-		sCommand = "cd '" + sWorkingDir + "' && (" + sCommand + ") > " + sOutputFile + " 2>&1";
-		sCommand += " && " + CURR_DIR_COMMAND + " > " + sTmpCurrDirFileName;
+
+		sCommand = "cd '" + sWorkingDir + "' && " + sCommand + " > " + sOutputFile + " 2>&1";
+		sCommand += " && " + CURR_DIR_COMMAND + " > '" +  sWorkingDir + "/" + sTmpWorkingDirFileName + "'";
 
 		std::cout << "FINAL COMMAND: " << sCommand << std::endl;
 
 		std::system(sCommand.data());
+
 		if(bMonitorExecution) bUserCommandBeingExecuted = false;
 
 	}
@@ -342,12 +344,7 @@ public:
 
 	// Updates the variable sUser
 	void UpdateUserString(){
-		std::string command;
-
-		if(WINDOWS_OS) command = "echo %username%";
-		else 		   command = "whoami";
-
-		ExecuteCommand(command, sTmpUsernameFileName, sUser);
+		ExecuteCommand(CURR_USER_COMMAND, sTmpUsernameFileName, sUser);
 		FileToVariable(sTmpUsernameFileName, sUser);
 
 		sUser = sUser.substr(0, sUser.length() - 1);
@@ -355,20 +352,15 @@ public:
 
 	// Updates the variable sWorkingDir
 	void UpdateWorkingDirString(){
-		std::string command;
-
-		if(WINDOWS_OS) command = "cd";
-		else 		   command = "pwd";
-
-		ExecuteCommand(command, sTmpCurrDirFileName, sWorkingDir);
-		FileToVariable(sTmpCurrDirFileName, sWorkingDir);
+		ExecuteCommand(CURR_DIR_COMMAND, sTmpWorkingDirFileName, sWorkingDir);
+		FileToVariable(sTmpWorkingDirFileName, sWorkingDir);
 
 		sWorkingDir = sWorkingDir.substr(0, sWorkingDir.length() - 1);
 	}
 
 	// Called once at the start, so create things here
 	bool OnUserCreate() override {		
-		// Creating the temp file
+		// Creating the tmp file
 		std::string sUseless;
 
 		ExecuteCommand(">" + sTmpOutputFileName, sTmpOutputFileName, sUseless);
