@@ -162,8 +162,6 @@ public:
 		sCommand = "cd '" + sWorkingDir + "' && " + sCommand + " > " + sOutputFile + " 2>&1";
 		sCommand += " && " + CURR_DIR_COMMAND + " > '" +  sWorkingDir + "/" + sTmpWorkingDirFileName + "'";
 
-		std::cout << "FINAL COMMAND: " << sCommand << std::endl;
-
 		std::system(sCommand.data());
 
 		if(bMonitorExecution) bUserCommandBeingExecuted = false;
@@ -211,12 +209,6 @@ public:
 
 			// ENTER
 			if (key == 66) {		
-				// Removing the initText
-				// uint8_t iTrashLength = GetFixText().length();
-				// sOnlyCommand = history.back().substr(
-				// 						    iTrashLength, 
-				// 						    history.back().length() - iTrashLength);
-				
 				// Executing the command and showing output				
 				if(bUserCommandBeingExecuted){
 					std::cout << history.back() + "\x0D";
@@ -316,9 +308,6 @@ public:
 		// Therefore, a new command line should not be appended
 		if(bUserCommandBeingExecuted) return;
 
-		// User may have used a command that changes directory
-		// UpdateWorkingDirString();
-
 		history.push_back(GetFixText());
 
 		// Dealing with the specific commands history vector
@@ -385,8 +374,6 @@ public:
 		// Getting keys	
 		pressedKeys      = GetAllPressedKeys();
 		heldKeys         = GetAllHeldKeys();
-		// bShiftIsHeld     = isShiftHeld();
-		// bBackspaceIsHeld = isBackspaceHeld();
 
 		// Zooming - Each wheel tick equals 120 in value (??)
 		if (GetMouseWheel()) {			

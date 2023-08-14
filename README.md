@@ -23,3 +23,8 @@ Compile and run:
 ``` bash
 g++ -o CustomTerminal CustomTerminal.cpp -lX11 -lGL -lpthread -lpng -lstdc++fs -std=c++17 && ./CustomTerminal
 ```
+
+# OLCPixelGameEngine
+This project uses the OLCPixelGameEngine version 2.16.
+Thank you to all the contributors.
+For the latest release, go to https://github.com/OneLoneCoder/olcPixelGameEngine 
