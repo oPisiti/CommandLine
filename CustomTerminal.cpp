@@ -35,7 +35,7 @@ int CompareStrings(std::string sA, std::string sB){
 }
 
 
-class MyText : public olc::PixelGameEngine {
+class CustomTerminal : public olc::PixelGameEngine {
 private:
 	// Rendering
 	const olc::Pixel olcPBackColor = {50, 50, 50, 255};
@@ -84,13 +84,17 @@ private:
 
 public:
 
-	MyText() {
+	CustomTerminal() {
 		sAppName = "Custom Terminal";
 	}
 
-	~MyText(){
-		tMonitorStdout.join();
-		tExecuteCommand.join();
+	~CustomTerminal(){
+
+		std::filesystem::remove(sTmpOutputFileName);
+		std::filesystem::remove(sTmpUsernameFileName);
+		std::filesystem::remove(sTmpWorkingDirFileName);
+
+		return;
 	}
 
 	// Draws a single character
@@ -216,7 +220,7 @@ public:
 				else{
 					// If a thread is called a second time without beeing joined	, the program crashes		
 					if(tExecuteCommand.joinable()) tExecuteCommand.join();			
-					tExecuteCommand = std::thread(&MyText::ExecuteCommand,
+					tExecuteCommand = std::thread(&CustomTerminal::ExecuteCommand,
 												  this,
 												  sOnlyCommand,
 												  std::ref(sTmpOutputFileName),
@@ -362,7 +366,7 @@ public:
 		fLastModifiedTime = std::filesystem::last_write_time(sTmpOutputFileName);
 		fCurrModifiedTime = fLastModifiedTime;
 
-		tMonitorStdout = std::thread(&MyText::MonitorStdout, this);
+		tMonitorStdout = std::thread(&CustomTerminal::MonitorStdout, this);
 
 		return true;
 	}
@@ -372,8 +376,8 @@ public:
 		Clear(olcPBackColor);
 
 		// Getting keys	
-		pressedKeys      = GetAllPressedKeys();
-		heldKeys         = GetAllHeldKeys();
+		pressedKeys = GetAllPressedKeys();
+		heldKeys    = GetAllHeldKeys();
 
 		// Zooming - Each wheel tick equals 120 in value (??)
 		if (GetMouseWheel()) {			
@@ -402,6 +406,13 @@ public:
 		// Handling discrepancies between ASCII norm and what "GetAllKeys()" returns.
 		bNewChar = true;
 		if (pressedKeys.size() > 0) {
+			// Ctrl + C
+			if(std::find(heldKeys.begin(), heldKeys.end(), 56)      != heldKeys.end() &&     // Ctrl
+			   std::find(pressedKeys.begin(), pressedKeys.end(), 3) != pressedKeys.end()){   // c
+
+				return false;
+			}
+
 			HandleKeyPress(addChar, pressedKeys);
 		}
 		
@@ -435,9 +446,9 @@ public:
 };
  
 int main(){
-	MyText myText;
-	if (myText.Construct(600, 500, 2, 2))
-		myText.Start();
+	CustomTerminal CustomTerminal;
+	if (CustomTerminal.Construct(600, 500, 2, 2))
+		CustomTerminal.Start();
 	
 	return 0;
 }
