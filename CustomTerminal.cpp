@@ -163,7 +163,7 @@ public:
 		// Signaling the start of execution for the monitoring thread
 		if(bMonitorExecution) bUserCommandBeingExecuted = true;
 
-		sCommand = "cd '" + sWorkingDir + "' && " + sCommand + " > " + sOutputFile + " 2>&1";
+		sCommand = "cd \"" + sWorkingDir + "\" && " + sCommand + " > " + sOutputFile + " 2>&1";
 		sCommand += " && " + CURR_DIR_COMMAND + " > '" +  sWorkingDir + "/" + sTmpWorkingDirFileName + "'";
 
 		std::system(sCommand.data());
@@ -356,7 +356,13 @@ public:
 		// Creating the tmp file
 		std::string sUseless;
 
-		ExecuteCommand(">" + sTmpOutputFileName, sTmpOutputFileName, sUseless);
+		if(!WINDOWS_OS) ExecuteCommand(">" + sTmpOutputFileName, sTmpOutputFileName, sUseless);
+		else{
+			ExecuteCommand("type nul >" + sTmpOutputFileName, sTmpOutputFileName, sUseless);
+			ExecuteCommand("type nul >" + sTmpUsernameFileName, sTmpOutputFileName, sUseless);
+			ExecuteCommand("type nul >" + sTmpWorkingDirFileName, sTmpOutputFileName, sUseless);
+		}
+
 		UpdateUserString();
 		UpdateWorkingDirString();
 
