@@ -1,6 +1,6 @@
 # A custom terminal application
 
-![customTerminal](https://github.com/oPisiti/CommandLine/assets/78967454/ccc9097d-3ce2-44c7-b39a-1ce320a456d0)
+![customTerminal](https://github.com/oPisiti/CustomTerminal/assets/78967454/3e35d576-7284-458f-a515-30a06f1f31d3)
 
 Uses the OS's default shell for command execution.
 
