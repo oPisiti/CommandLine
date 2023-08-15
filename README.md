@@ -2,6 +2,10 @@
 
 ![customTerminal](https://github.com/oPisiti/CustomTerminal/assets/78967454/3e35d576-7284-458f-a515-30a06f1f31d3)
 
+OLCPixelGameEngine is used solely for handling a window and allowing the control of each pixel on screen.
+
+Everything from drawing characters from a specified font forwards is custom made.
+
 Uses the OS's default shell for command execution.
 
 # Supports
