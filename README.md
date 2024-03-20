@@ -1,6 +1,6 @@
 # A custom terminal application
 
-![customTerminal](https://github.com/oPisiti/CustomTerminal/assets/78967454/3e35d576-7284-458f-a515-30a06f1f31d3)
+![CustomTerminal](https://github.com/oPisiti/CustomTerminal/assets/78967454/ea1b99ae-1e64-4aab-813c-1e90d497862d)
 
 OLCPixelGameEngine is used solely for handling a window and allowing the control of each pixel on screen.
 
