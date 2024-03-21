@@ -1,3 +1,6 @@
+// Author:  Lauro França @oPisiti
+// Created: 2023
+
 #define OLC_PGE_APPLICATION
 
 #include <chrono>
