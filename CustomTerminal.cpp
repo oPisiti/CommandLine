@@ -1,5 +1,14 @@
-// Author:  Lauro França @oPisiti
-// Created: 2023
+//********************************************************************
+// Author: Lauro França (oPisiti)                                    #
+// Contact:                                                          #
+//   github: oPisiti                                                 #
+//   Email: contact@opisiti.com                                      #
+// Date: 2023                                                        #
+// Description:                                                      #
+//   A custom terminal emulator, using the OLC Pixel Game engine as  #
+//   a framework                                                     #
+//********************************************************************
+
 
 #define OLC_PGE_APPLICATION
 
